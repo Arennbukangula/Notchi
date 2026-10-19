@@ -1,0 +1,19 @@
+﻿<Window x:Class="WindowsNotch.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Notch" Height="35" Width="180"
+        WindowStyle="None" 
+        AllowsTransparency="True" 
+        Background="Transparent"
+        Topmost="True" 
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual">
+    
+    <Border Background="Black" CornerRadius="0,0,12,12" x:Name="NotchBorder" Cursor="Hand">
+        <Grid>
+            <!-- Konten saat Notch mengecil -->
+            <TextBlock x:Name="NotchText" Text="12:00" Foreground="White" 
+                       FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Grid>
+    </Border>
+</Window>
