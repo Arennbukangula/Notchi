@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace WindowsNotch
@@ -95,10 +96,7 @@ namespace WindowsNotch
             _isExpanded = true;
 
             ApplyExpandedState(true);
-
-            this.Width = ExpandedWidth;
-            this.Height = ExpandedHeight;
-            PositionAtTopCenter();
+            AnimateTo(ExpandedWidth, ExpandedHeight);
         }
 
         // Saat kursor mouse keluar dari area Notch (Mengecil)
@@ -108,10 +106,26 @@ namespace WindowsNotch
             _isExpanded = false;
 
             ApplyExpandedState(false);
+            AnimateTo(CollapsedWidth, CollapsedHeight);
+        }
 
-            this.Width = CollapsedWidth;
-            this.Height = CollapsedHeight;
-            PositionAtTopCenter();
+        // Animasi halus 60fps: Width, Height, dan Left dianimasikan bersamaan
+        // agar pill tetap center di tengah atas selama transisi
+        private void AnimateTo(double targetWidth, double targetHeight)
+        {
+            var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var duration = new Duration(TimeSpan.FromSeconds(0.25));
+
+            var widthAnim = new DoubleAnimation(targetWidth, duration) { EasingFunction = easing };
+            var heightAnim = new DoubleAnimation(targetHeight, duration) { EasingFunction = easing };
+            var leftAnim = new DoubleAnimation(
+                (SystemParameters.PrimaryScreenWidth - targetWidth) / 2, duration)
+            { EasingFunction = easing };
+
+            // SnapshotAndReplace: hover cepat bolak-balik tetap mulus dari posisi sekarang
+            BeginAnimation(WidthProperty, widthAnim);
+            BeginAnimation(HeightProperty, heightAnim);
+            BeginAnimation(LeftProperty, leftAnim);
         }
 
         // Menampilkan/menyembunyikan elemen sesuai state
