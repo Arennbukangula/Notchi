@@ -1,8 +1,6 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
 
-namespace Notchi;
+namespace WindowsNotch;
 
 /// <summary>
 /// Interaction logic for App.xaml
@@ -10,4 +8,3 @@ namespace Notchi;
 public partial class App : Application
 {
 }
-

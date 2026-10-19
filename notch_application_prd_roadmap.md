@@ -15,13 +15,14 @@ Develop a lightweight, responsive, and aesthetic overlay notch application for W
 
 ### 2.1 Core UI & Animations
 - **Frameless Overlay Window:** Topmost, borderless, transparent window positioned at the top-center of the primary monitor.
-- **Hardware-Accelerated Animations:** Smooth 60 FPS expand/collapse transitions using WPF `DoubleAnimation` and `QuadraticEase` GPU acceleration on mouse hover.
+- **Hardware-Accelerated Animations:** Smooth 60 FPS expand/collapse transitions using WPF `DoubleAnimation` with `QuinticEase` (EaseOut, 0.32s) on mouse hover.
 - **Quick Close Control:** Mouse right-click event (`MouseRightButtonDown`) to terminate the process instantly during development and usage.
 
 ### 2.2 Widgets & Integrations
 - **Universal Media Controls:** Display current playback track, artist name, album art, and controls (Play/Pause/Skip) via Windows System Media Transport Controls (SMTC) API (Spotify, Chrome, YouTube, etc.).
-- **System Metrics Display:** Real-time indicator for battery percentage, CPU usage, and RAM usage inside the expanded notch view.
-- **Quick File Drop Zone:** Temporary drag-and-drop zone to hold files for easy moving/sharing.
+- **Clock Fallback:** When no media session is active, the collapsed notch displays the current time (`HH:mm`).
+- **System Metrics Display:** *Deferred.* Real-time battery percentage, CPU usage, and RAM usage inside the expanded notch view are out of scope for the current release; the expanded view stays a pure media player.
+- **Quick File Drop Zone:** *Deferred* to a later phase.
 
 ### 2.3 System & Performance Constraints
 - **Startup Integration:** Optional "Start on Boot" registry entry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
@@ -37,7 +38,8 @@ WindowsNotch/
 ├── App.xaml.cs
 ├── MainWindow.xaml       # UI Layout & Visual Elements
 ├── MainWindow.xaml.cs    # Window Logic, Position & Animations
-└── WindowsNotch.csproj   # Project Configuration & Dependencies
+├── SmtcService.cs        # Windows Media Session (SMTC) Integration
+└── Notchi.csproj         # Project Configuration & Dependencies
 ```
 
 ---
@@ -48,14 +50,18 @@ WindowsNotch/
 - [x] Create basic frameless top-center floating window in WPF.
 - [x] Implement smooth `DoubleAnimation` expand/collapse transition on hover.
 - [x] Add right-click app termination handler.
-- [ ] Refactor `MainWindow.xaml` to include structured Grid layouts for time, media info, and action buttons.
+- [x] Refactor `MainWindow.xaml` to include structured Grid layouts for time, media info, and action buttons.
 - [ ] Add drop-shadow or soft rounded borders for desktop integration.
+  - *Dropped:* shadow removed intentionally; the notch uses a solid black `Path` silhouette with outward top flares and 18px bottom radius.
 
 ### Phase 2: Media Player & System API Integration
-- [ ] Add `Microsoft.Windows.SDK.Contracts` package dependency for native Windows API calls.
-- [ ] Integrate `GlobalSystemMediaTransportControlsSessionManager` to read active media sessions.
-- [ ] Connect play/pause/skip buttons in `MainWindow.xaml` to SMTC commands.
+- [x] Add native Windows API access for SMTC.
+  - *Implementation:* TFM raised to `net8.0-windows10.0.19041.0`, so `Windows.Media.Control` is available without the `Microsoft.Windows.SDK.Contracts` package.
+- [x] Integrate `GlobalSystemMediaTransportControlsSessionManager` to read active media sessions.
+- [x] Connect play/pause/skip buttons in `MainWindow.xaml` to SMTC commands.
+  - *Also implemented:* seek via progress slider, album art, source-app badge, and clock fallback when no session exists.
 - [ ] Hook `SystemInformation.PowerStatus` to render real-time battery stats.
+  - *Dropped:* expanded view is a pure media player by design; battery/CPU/RAM metrics are out of scope.
 
 ### Phase 3: Autostart, Optimization & Deployment
 - [ ] Implement registry helper for Auto-Start on Windows boot.
