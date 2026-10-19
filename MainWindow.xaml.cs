@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -18,12 +19,14 @@ namespace WindowsNotch
     {
         private const double CollapsedWidth = 250;
         private const double CollapsedHeight = 40;
-        private const double ExpandedWidth = 255;
+        private const double ExpandedWidth = 300;
         private const double ExpandedHeight = 100;
+        private const double IdleExpandedHorizontalMargin = 8;
+        private const double IdleExpandedTopMargin = 8;
 
         private const double SideCollapsedWidth = 40;
         private const double SideCollapsedHeight = 107;
-        private const double SideExpandedWidth = 255;
+        private const double SideExpandedWidth = 300;
         private const double SideExpandedHeight = 107;
         private const double SideCornerRadius = 20;
 
@@ -83,10 +86,17 @@ namespace WindowsNotch
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Notchi", "settings.json");
 
+        private static readonly SolidColorBrush AccentBrush = FrozenBrush(0x3D, 0x7E, 0xFF);
+        private static readonly SolidColorBrush WarningBrush = FrozenBrush(0xFF, 0xB0, 0x20);
+        private static readonly SolidColorBrush DangerBrush = FrozenBrush(0xFF, 0x45, 0x3A);
+        private static readonly SolidColorBrush BatteryBrush = FrozenBrush(0x4C, 0xD9, 0x64);
+
         private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
         private readonly DispatcherTimer _collapseTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
         private readonly DispatcherTimer _mediaTimer = new() { Interval = TimeSpan.FromSeconds(1) };
         private readonly SmtcService _smtc = new();
+        private readonly SystemStatusService _systemStatus = new();
+        private Settings _settings = new();
         private MediaInfo? _media;
         private bool _isSeeking;
         private bool _isExpanded;
@@ -107,6 +117,10 @@ namespace WindowsNotch
         private sealed class Settings
         {
             public string? Anchor { get; set; }
+            public bool ShowCpu { get; set; } = true;
+            public bool ShowRam { get; set; } = true;
+            public bool ShowDisk { get; set; } = true;
+            public bool ShowBattery { get; set; } = true;
         }
 
         private bool IsSideAnchor => _anchor is NotchAnchor.LeftCenter or NotchAnchor.RightCenter;
@@ -123,7 +137,10 @@ namespace WindowsNotch
         {
             InitializeComponent();
 
-            _anchor = LoadAnchor();
+            _settings = LoadSettings();
+            _anchor = Enum.TryParse<NotchAnchor>(_settings.Anchor, out var anchor)
+                ? anchor
+                : NotchAnchor.TopCenter;
             _monitor = SystemParameters.WorkArea;
             SetAnchor(_anchor);
 
@@ -134,6 +151,7 @@ namespace WindowsNotch
                 SetWindowSize(Width, Height);
             };
             StartClock();
+            ApplySettingsVisibility();
 
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
@@ -197,8 +215,9 @@ namespace WindowsNotch
 
             WireMediaControls();
 
-            // Media: tampilkan info lagu saat ada sesi, fallback ke jam bila tidak ada
+            // Media: tampilkan info lagu saat ada sesi, fallback ke idle dashboard bila tidak ada
             _smtc.MediaChanged += OnMediaChanged;
+            _systemStatus.StatusChanged += OnSystemStatusChanged;
             _mediaTimer.Tick += (s, e) => UpdateProgress();
             _mediaTimer.Start();
             ApplyMedia(null);
@@ -236,15 +255,38 @@ namespace WindowsNotch
             Dispatcher.BeginInvoke(() => ApplyMedia(info));
         }
 
+        private void OnSystemStatusChanged(SystemStatusSnapshot status)
+        {
+            // Sampling berjalan di thread pool; update UI di dispatcher
+            Dispatcher.BeginInvoke(() => ApplySystemStatus(status));
+        }
+
+        private void ApplySystemStatus(SystemStatusSnapshot status)
+        {
+            if (_media != null) return;
+
+            SetMetric(ExpandedCpuBar, ExpandedCpuText, status.CpuPercent);
+            SetMetric(ExpandedRamBar, ExpandedRamText, status.RamPercent);
+            SetMetric(ExpandedDiskBar, ExpandedDiskText, status.DiskPercent);
+
+            ExpandedDiskLabel.Text = status.DiskLabel;
+
+            ApplyBattery(status.BatteryPercent, status.IsCharging,
+                ExpandedBatteryPanel, ExpandedBatteryFill, ExpandedBatteryText, 16);
+        }
+
         private void ApplyMedia(MediaInfo? info)
         {
             _media = info;
 
             if (info == null)
             {
+                _systemStatus.Start();
                 UpdateVisualState();
                 return;
             }
+
+            _systemStatus.Stop();
 
             TrackTitle.Text = info.Title;
             TrackArtist.Text = info.Artist;
@@ -739,20 +781,18 @@ namespace WindowsNotch
             return false;
         }
 
-        private static NotchAnchor LoadAnchor()
+        private static Settings LoadSettings()
         {
             try
             {
-                if (!File.Exists(SettingsPath)) return NotchAnchor.TopCenter;
+                if (!File.Exists(SettingsPath)) return new Settings();
 
-                var data = JsonSerializer.Deserialize<Settings>(File.ReadAllText(SettingsPath));
-                return Enum.TryParse<NotchAnchor>(data?.Anchor, out var anchor)
-                    ? anchor
-                    : NotchAnchor.TopCenter;
+                return JsonSerializer.Deserialize<Settings>(File.ReadAllText(SettingsPath))
+                       ?? new Settings();
             }
             catch
             {
-                return NotchAnchor.TopCenter;
+                return new Settings();
             }
         }
 
@@ -761,8 +801,8 @@ namespace WindowsNotch
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-                File.WriteAllText(SettingsPath,
-                    JsonSerializer.Serialize(new Settings { Anchor = _anchor.ToString() }));
+                _settings.Anchor = _anchor.ToString();
+                File.WriteAllText(SettingsPath, JsonSerializer.Serialize(_settings));
             }
             catch
             {
@@ -783,37 +823,119 @@ namespace WindowsNotch
             UpdateVisualState();
         }
 
-        // Menentukan layout mana yang tampil: jam, media horizontal, atau mini vertikal di sisi
+        // Menentukan layout mana yang tampil: idle dashboard, media horizontal, atau mini vertikal di sisi
         private void UpdateVisualState()
         {
             bool hasMedia = _media != null;
             bool sideCollapsed = IsSideAnchor && !_isExpanded;
 
-            SideCollapsedRoot.Visibility = sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
+            SideCollapsedRoot.Visibility = hasMedia && sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
+            SideIdleRoot.Visibility = !hasMedia && sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
             MediaRoot.Visibility = hasMedia && !sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
-            ClockRoot.Visibility = !hasMedia && !sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
+            IdleRoot.Visibility = !hasMedia && !sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
 
             // Mode sisi yang mekar tetap horizontal, tapi konten ditengahkan vertikal
             MediaRoot.VerticalAlignment = IsSideAnchor ? VerticalAlignment.Center : VerticalAlignment.Top;
             MediaRoot.Margin = IsSideAnchor ? new Thickness(0) : new Thickness(0, 6.5, 0, 0);
 
+            if (!hasMedia && !sideCollapsed)
+            {
+                IdleCompactRoot.Visibility = _isExpanded ? Visibility.Collapsed : Visibility.Visible;
+                IdleExpandedRoot.Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed;
+                IdleExpandedRoot.Margin = IsSideAnchor
+                    ? new Thickness(IdleExpandedHorizontalMargin, 0, IdleExpandedHorizontalMargin, 0)
+                    : new Thickness(IdleExpandedHorizontalMargin, IdleExpandedTopMargin,
+                        IdleExpandedHorizontalMargin, 0);
+            }
+
             if (!sideCollapsed) return;
 
             SideAlbumArtBorder.Visibility = hasMedia ? Visibility.Visible : Visibility.Collapsed;
             SidePauseButton.Visibility = hasMedia ? Visibility.Visible : Visibility.Collapsed;
-            SideClockText.Visibility = hasMedia ? Visibility.Collapsed : Visibility.Visible;
         }
 
-        // Menjalankan jam real-time (untuk state tanpa media)
+        // Menjalankan jam dan tanggal real-time (untuk state tanpa media)
         private void StartClock()
         {
-            _timer.Tick += (s, e) =>
-            {
-                string now = DateTime.Now.ToString("HH:mm");
-                ClockText.Text = now;
-                SideClockText.Text = now;
-            };
+            UpdateClock();
+            _timer.Tick += (s, e) => UpdateClock();
             _timer.Start();
+        }
+
+        private void UpdateClock()
+        {
+            var now = DateTime.Now;
+            string time = now.ToString("HH:mm", CultureInfo.CurrentCulture);
+
+            CompactClockText.Text = time;
+            ExpandedClockText.Text = time;
+            SideHourText.Text = now.ToString("HH", CultureInfo.CurrentCulture);
+            SideMinuteText.Text = now.ToString("mm", CultureInfo.CurrentCulture);
+
+            CompactDateText.Text = now.ToString("ddd, d MMM", CultureInfo.CurrentCulture);
+            ExpandedDateText.Text = now.ToString("dddd, d MMM yyyy", CultureInfo.CurrentCulture);
+            SideDayText.Text = now.ToString("ddd", CultureInfo.CurrentCulture);
+            SideDateText.Text = now.ToString("d MMM", CultureInfo.CurrentCulture);
+        }
+
+        private static SolidColorBrush FrozenBrush(byte r, byte g, byte b)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            brush.Freeze();
+            return brush;
+        }
+
+        private static void SetMetric(ProgressBar bar, TextBlock text, double? value)
+        {
+            if (value is not double v)
+            {
+                bar.Value = 0;
+                text.Text = "--%";
+                return;
+            }
+
+            v = Math.Clamp(v, 0, 100);
+            bar.Value = v;
+            text.Text = $"{Math.Round(v):0}%";
+            bar.Foreground = v >= 90 ? DangerBrush : v >= 75 ? WarningBrush : AccentBrush;
+        }
+
+        private void ApplyBattery(
+            int? percent,
+            bool isCharging,
+            FrameworkElement panel,
+            Border fill,
+            TextBlock text,
+            double innerWidth)
+        {
+            if (!_settings.ShowBattery || percent is not int p)
+            {
+                panel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            p = Math.Clamp(p, 0, 100);
+            panel.Visibility = Visibility.Visible;
+            fill.Width = innerWidth * p / 100.0;
+            fill.Background = isCharging
+                ? AccentBrush
+                : p <= 20 ? DangerBrush : p <= 40 ? WarningBrush : BatteryBrush;
+            text.Text = isCharging ? $"{p}% AC" : $"{p}%";
+        }
+
+        private void ApplySettingsVisibility()
+        {
+            var visible = Visibility.Visible;
+            var collapsed = Visibility.Collapsed;
+
+            ExpandedCpuRow.Visibility = _settings.ShowCpu ? visible : collapsed;
+            ExpandedRamRow.Visibility = _settings.ShowRam ? visible : collapsed;
+            ExpandedDiskRow.Visibility = _settings.ShowDisk ? visible : collapsed;
+
+            if (!_settings.ShowBattery)
+            {
+                ExpandedBatteryPanel.Visibility = collapsed;
+            }
         }
 
         // Saat kursor mouse masuk ke area Notch (Mekar)
@@ -862,6 +984,9 @@ namespace WindowsNotch
         protected override void OnClosed(EventArgs e)
         {
             _mediaTimer.Stop();
+            _timer.Stop();
+            _systemStatus.StatusChanged -= OnSystemStatusChanged;
+            _systemStatus.Dispose();
             _smtc.Dispose();
             base.OnClosed(e);
         }

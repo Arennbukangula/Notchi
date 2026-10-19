@@ -1,4 +1,4 @@
-﻿<Window x:Class="WindowsNotch.MainWindow"
+<Window x:Class="WindowsNotch.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Notch" Height="40" Width="250"
@@ -82,6 +82,27 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Bar tipis untuk metrik sistem (CPU/RAM/disk) -->
+        <Style x:Key="MetricBar" TargetType="ProgressBar">
+            <Setter Property="Height" Value="3"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Background" Value="#3A3A3A"/>
+            <Setter Property="Foreground" Value="#3D7EFF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border x:Name="PART_Track" Background="{TemplateBinding Background}"
+                                    CornerRadius="1.5"/>
+                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}" CornerRadius="1.5"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -92,11 +113,105 @@
             <Path x:Name="NotchShape" Fill="Black"/>
 
         <Grid x:Name="ContentRoot" Margin="16,0">
-            <!-- State 1: Jam (saat tidak ada media yang diputar) -->
-            <Grid x:Name="ClockRoot" Visibility="Collapsed" VerticalAlignment="Center">
-                <TextBlock x:Name="ClockText" Text="12:00" Foreground="White"
-                           FontSize="14" FontWeight="SemiBold"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+            <!-- State 1: Idle dashboard (saat tidak ada sesi media) -->
+            <Grid x:Name="IdleRoot" Visibility="Collapsed" VerticalAlignment="Stretch">
+                <!-- Collapsed: hanya jam dan tanggal agar capsule tetap bersih -->
+                <StackPanel x:Name="IdleCompactRoot" Visibility="Collapsed"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock x:Name="CompactClockText" Text="08:42" Foreground="White"
+                               FontSize="15" FontWeight="SemiBold" LineHeight="17"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="CompactDateText" Text="Sen, 19 Okt" Foreground="#9A9A9E"
+                               FontSize="9" LineHeight="10" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Expanded: jam besar, tanggal, metrik lengkap, baterai -->
+                <Grid x:Name="IdleExpandedRoot" Visibility="Collapsed" Margin="8,8,8,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="108"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="ExpandedClockText" Text="08:42" Foreground="White"
+                                   FontSize="26" FontWeight="SemiBold" LineHeight="28"/>
+                        <TextBlock x:Name="ExpandedDateText" Text="Senin, 19 Okt 2026"
+                                   Foreground="#9A9A9E" FontSize="9" LineHeight="11"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <StackPanel x:Name="ExpandedBatteryPanel" Orientation="Horizontal"
+                                    Margin="0,10,0,0">
+                            <Border Width="20" Height="10" BorderBrush="#C8C8CC"
+                                    BorderThickness="1" CornerRadius="2" VerticalAlignment="Center">
+                                <Grid Margin="1">
+                                    <Border x:Name="ExpandedBatteryFill" Width="0"
+                                            HorizontalAlignment="Left" Background="#4CD964"
+                                            CornerRadius="1"/>
+                                </Grid>
+                            </Border>
+                            <Border Width="2" Height="4" Background="#C8C8CC" CornerRadius="1"
+                                    Margin="1,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ExpandedBatteryText" Text="82%" Foreground="#C8C8CC"
+                                       FontSize="8.5" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Grid Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid x:Name="ExpandedCpuRow" Height="15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="32"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="CPU" Foreground="#9A9A9E" FontSize="8"
+                                       VerticalAlignment="Center"/>
+                            <ProgressBar x:Name="ExpandedCpuBar" Grid.Column="1"
+                                         Style="{StaticResource MetricBar}"
+                                         Margin="6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ExpandedCpuText" Grid.Column="2" Text="--%"
+                                       Foreground="#C8C8CC" FontSize="8.5"
+                                       TextAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid x:Name="ExpandedRamRow" Grid.Row="1" Height="15" Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="32"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="RAM" Foreground="#9A9A9E" FontSize="8"
+                                       VerticalAlignment="Center"/>
+                            <ProgressBar x:Name="ExpandedRamBar" Grid.Column="1"
+                                         Style="{StaticResource MetricBar}"
+                                         Margin="6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ExpandedRamText" Grid.Column="2" Text="--%"
+                                       Foreground="#C8C8CC" FontSize="8.5"
+                                       TextAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid x:Name="ExpandedDiskRow" Grid.Row="2" Height="15" Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="32"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ExpandedDiskLabel" Text="C:" Foreground="#9A9A9E"
+                                       FontSize="8" VerticalAlignment="Center"/>
+                            <ProgressBar x:Name="ExpandedDiskBar" Grid.Column="1"
+                                         Style="{StaticResource MetricBar}"
+                                         Margin="6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ExpandedDiskText" Grid.Column="2" Text="--%"
+                                       Foreground="#C8C8CC" FontSize="8.5"
+                                       TextAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                    </Grid>
+                </Grid>
             </Grid>
 
             <!-- State 3: Mode sisi (menempel layar kiri/kanan), collapsed -->
@@ -123,10 +238,22 @@
                               Data="M0,0 h4 v13 h-4 z M6,0 h4 v13 h-4 z"/>
                     </Viewbox>
                 </Button>
+            </StackPanel>
 
-                <TextBlock x:Name="SideClockText" Text="12:00" Foreground="White"
-                           FontSize="11" FontWeight="SemiBold" Visibility="Collapsed"
-                           HorizontalAlignment="Center"/>
+            <!-- Idle mode sisi: hanya jam, hari, dan tanggal -->
+            <StackPanel x:Name="SideIdleRoot" Width="40" Visibility="Collapsed"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="SideHourText" Text="08" Foreground="White"
+                           FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           LineHeight="13"/>
+                <TextBlock x:Name="SideMinuteText" Text="42" Foreground="White"
+                           FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           LineHeight="13" Margin="0,-1,0,0"/>
+                <Border Width="20" Height="1" Background="#2F2F2F" Margin="0,6,0,0"/>
+                <TextBlock x:Name="SideDayText" Text="Sen" Foreground="#9A9A9E"
+                           FontSize="8" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                <TextBlock x:Name="SideDateText" Text="19 Okt" Foreground="#C8C8CC"
+                           FontSize="8" HorizontalAlignment="Center" Margin="0,1,0,0"/>
             </StackPanel>
 
             <!-- State 2: Media player (sesuai mockup) -->

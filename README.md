@@ -6,12 +6,12 @@ A lightweight Windows "notch" overlay inspired by the macOS notch and Dynamic Is
 
 - **Media controls everywhere** — track title, artist, album art, progress, and play/pause/skip via the Windows System Media Transport Controls (SMTC) API. Works with Spotify, YouTube in Chrome/Edge, and other apps that expose a media session.
 - **Smart thumbnail handling** — Chrome sometimes reports its app icon before the video artwork is ready. Notchi re-reads the thumbnail for 5 seconds after a track change so the real artwork replaces the fallback, and retries failed loads instead of caching an empty result.
-- **Clock fallback** — shows `HH:mm` when no media session is active.
+- **Idle dashboard** — when no media session is active, the collapsed capsule shows the time, day, and date. Hovering reveals the full date, battery status, and local CPU/RAM/disk usage.
 - **Hover animation** — smooth expand/collapse using `QuinticEase` (EaseOut, 0.32 s).
 - **Drag & drop with snapping** — drag the pill anywhere; while dragging it renders as a clean capsule, and on release it snaps to the nearest anchor:
   - Top center
-  - Left center (side-docked vertical mini player)
-  - Right center (side-docked vertical mini player)
+  - Left center (side-docked vertical capsule)
+  - Right center (side-docked vertical capsule)
 - **Persistent position** — the chosen anchor is saved and restored on startup.
 - **Low footprint** — native WPF with no Electron/webview; idle CPU measured at `0.07%` and private memory below `100 MB`.
 - **Right-click to quit.**
@@ -46,7 +46,7 @@ bin\Debug\net8.0-windows10.0.19041.0\Notchi.exe
 
 | Action | Result |
 | --- | --- |
-| Hover over the notch | Expands to the media player (or clock) |
+| Hover over the notch | Expands to the media player, or the idle clock/metrics dashboard |
 | Left-click and drag | Moves the notch as a capsule |
 | Release after dragging | Snaps to the nearest anchor (top center / left / right) |
 | Right-click | Closes the app |
@@ -60,7 +60,13 @@ The saved anchor lives at:
 Example:
 
 ```json
-{ "Anchor": "RightCenter" }
+{
+  "Anchor": "RightCenter",
+  "ShowCpu": true,
+  "ShowRam": true,
+  "ShowDisk": true,
+  "ShowBattery": true
+}
 ```
 
 ## Publish
@@ -87,6 +93,7 @@ Notchi/
 ├── MainWindow.xaml             # Notch layout, shapes, and control templates
 ├── MainWindow.xaml.cs          # Window positioning, anchors, drag & drop, animations
 ├── SmtcService.cs              # SMTC media session wrapper (metadata, artwork, controls)
+├── SystemStatusService.cs      # Local CPU/RAM/disk/battery sampling for the idle dashboard
 ├── Notchi.csproj               # .NET 8 WPF project
 └── notch_application_prd_roadmap.md  # Product requirements and roadmap
 ```
@@ -95,7 +102,8 @@ Notchi/
 
 - Album art and metadata depend on what the source app publishes through SMTC. If an app never provides artwork, no thumbnail can be shown.
 - Autostart on Windows boot is not implemented yet; see the PRD roadmap.
-- System metrics (battery/CPU/RAM) are intentionally out of scope — the expanded view is a pure media player.
+- System metrics are read locally and are only shown in the expanded idle dashboard. There is no network, weather, or internet integration. Each metric can be hidden with the `ShowCpu`, `ShowRam`, `ShowDisk`, and `ShowBattery` settings.
+- The side-docked collapsed capsule intentionally shows only the time, day, and date; CPU/RAM/disk/battery appear after hovering.
 
 ## License
 

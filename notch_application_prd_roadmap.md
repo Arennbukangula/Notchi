@@ -16,15 +16,15 @@ Develop a lightweight, responsive, and aesthetic overlay notch application for W
 ### 2.1 Core UI & Animations
 - **Frameless Overlay Window:** Topmost, borderless, transparent window, initially positioned at the top-center of the primary monitor.
 - **Drag & Drop Repositioning:** The collapsed pill can be dragged freely with the left mouse button; while dragging it is rendered as a clean capsule (fully rounded ends). On release it snaps to the nearest anchor: `TopCenter`, `LeftCenter`, or `RightCenter`. The chosen anchor is persisted to `%LOCALAPPDATA%\Notchi\settings.json`.
-- **Side-Docked Mode:** Left/right anchors use a compact vertical layout (album art + pause control, or clock) that sits flush against the screen edge. The expanded state still uses the horizontal media layout.
+- **Side-Docked Mode:** Left/right anchors use a compact vertical layout that sits flush against the screen edge. The collapsed capsule shows only the time, day, and date when idle (or album art + pause control when media is active). Hovering expands to the horizontal media player or the idle dashboard.
 - **Hardware-Accelerated Animations:** Smooth 60 FPS expand/collapse transitions using WPF `DoubleAnimation` with `QuinticEase` (EaseOut, 0.32s) on mouse hover.
 - **Quick Close Control:** Mouse right-click event (`MouseRightButtonDown`) to terminate the process instantly during development and usage.
 
 ### 2.2 Widgets & Integrations
 - **Universal Media Controls:** Display current playback track, artist name, album art, and controls (Play/Pause/Skip) via Windows System Media Transport Controls (SMTC) API (Spotify, Chrome, YouTube, etc.).
   - *Thumbnail handling:* Chrome sometimes reports its app icon before the video artwork is ready. The service keeps re-reading the thumbnail for 5 seconds after the track changes (and retries failed loads), so the video thumbnail replaces the fallback. Session selection is sticky to prevent jumping between browser tabs or apps.
-- **Clock Fallback:** When no media session is active, the collapsed notch displays the current time (`HH:mm`).
-- **System Metrics Display:** *Deferred.* Real-time battery percentage, CPU usage, and RAM usage inside the expanded notch view are out of scope for the current release; the expanded view stays a pure media player.
+- **Idle Dashboard:** When no media session is active, the collapsed capsule displays the current time and day/date. Hovering reveals the full date, battery status, and local CPU/RAM/disk usage.
+- **System Metrics Display:** Implemented for the expanded idle view using local Win32 interop and managed APIs: battery via `GetSystemPowerStatus`, CPU via `GetSystemTimes`, RAM via `GlobalMemoryStatusEx`, and disk via `DriveInfo`. CPU/RAM/disk/battery visibility is configurable through the persisted settings. No network, weather, or internet integration is included.
 - **Quick File Drop Zone:** *Deferred* to a later phase.
 
 ### 2.3 System & Performance Constraints
@@ -42,6 +42,7 @@ WindowsNotch/
 ├── MainWindow.xaml       # UI Layout & Visual Elements
 ├── MainWindow.xaml.cs    # Window Logic, Position & Animations
 ├── SmtcService.cs        # Windows Media Session (SMTC) Integration
+├── SystemStatusService.cs # Local CPU/RAM/disk/battery sampling
 └── Notchi.csproj         # Project Configuration & Dependencies
 ```
 
@@ -66,9 +67,9 @@ WindowsNotch/
   - *Implementation:* TFM raised to `net8.0-windows10.0.19041.0`, so `Windows.Media.Control` is available without the `Microsoft.Windows.SDK.Contracts` package.
 - [x] Integrate `GlobalSystemMediaTransportControlsSessionManager` to read active media sessions.
 - [x] Connect play/pause/skip buttons in `MainWindow.xaml` to SMTC commands.
-  - *Also implemented:* seek via progress slider, album art, source-app badge, and clock fallback when no session exists.
-- [ ] Hook `SystemInformation.PowerStatus` to render real-time battery stats.
-  - *Dropped:* expanded view is a pure media player by design; battery/CPU/RAM metrics are out of scope.
+  - *Also implemented:* seek via progress slider, album art, source-app badge, and idle clock fallback when no session exists.
+- [x] Add local battery, CPU, RAM, and disk metrics to the expanded idle dashboard.
+  - *Implementation:* `SystemStatusService` samples only while no media session is active; the collapsed capsule stays limited to time/day/date, and the side-docked expanded view shows the full metric set. Network/weather widgets were intentionally removed.
 
 ### Phase 3: Autostart, Optimization & Deployment
 - [ ] Implement registry helper for Auto-Start on Windows boot.
