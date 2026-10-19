@@ -100,8 +100,6 @@ namespace WindowsNotch
         private enum NotchAnchor
         {
             TopCenter,
-            TopLeft,
-            TopRight,
             LeftCenter,
             RightCenter
         }
@@ -414,58 +412,22 @@ namespace WindowsNotch
                     bottomRadius = Math.Min(bottomRadius, h / 2);
 
                     ctx.BeginFigure(new Point(0, 0), isFilled: true, isClosed: true);
-
-                    if (_anchor == NotchAnchor.TopLeft)
-                    {
-                        // Menempel sudut kiri atas: tepi kiri lurus, flare hanya di kanan
-                        ctx.LineTo(new Point(w, 0), true, false);
-                        ctx.ArcTo(new Point(w - flare, flare), new Size(flare, flare), 0, false,
-                                  SweepDirection.Counterclockwise, true, false);
-                        ctx.LineTo(new Point(w - flare, h - bottomRadius), true, false);
-                        ctx.ArcTo(new Point(w - flare - bottomRadius, h),
-                                  new Size(bottomRadius, bottomRadius), 0, false,
-                                  SweepDirection.Clockwise, true, false);
-                        ctx.LineTo(new Point(bottomRadius, h), true, false);
-                        ctx.ArcTo(new Point(0, h - bottomRadius),
-                                  new Size(bottomRadius, bottomRadius), 0, false,
-                                  SweepDirection.Clockwise, true, false);
-                        ctx.LineTo(new Point(0, 0), true, false);
-                    }
-                    else if (_anchor == NotchAnchor.TopRight)
-                    {
-                        // Menempel sudut kanan atas: tepi kanan lurus, flare hanya di kiri
-                        ctx.LineTo(new Point(w, 0), true, false);
-                        ctx.LineTo(new Point(w, h - bottomRadius), true, false);
-                        ctx.ArcTo(new Point(w - bottomRadius, h),
-                                  new Size(bottomRadius, bottomRadius), 0, false,
-                                  SweepDirection.Clockwise, true, false);
-                        ctx.LineTo(new Point(flare + bottomRadius, h), true, false);
-                        ctx.ArcTo(new Point(flare, h - bottomRadius),
-                                  new Size(bottomRadius, bottomRadius), 0, false,
-                                  SweepDirection.Clockwise, true, false);
-                        ctx.LineTo(new Point(flare, flare), true, false);
-                        ctx.ArcTo(new Point(0, 0), new Size(flare, flare), 0, false,
-                                  SweepDirection.Counterclockwise, true, false);
-                    }
-                    else
-                    {
-                        ctx.LineTo(new Point(w, 0), true, false);
-                        // Flare kanan: dari ujung atas kanan -> badan (tangen mulus di titik ujung)
-                        ctx.ArcTo(new Point(w - flare, flare), new Size(flare, flare), 0, false,
-                                  SweepDirection.Counterclockwise, true, false);
-                        ctx.LineTo(new Point(w - flare, h - bottomRadius), true, false);
-                        // Sudut bawah kanan (masuk ke tengah)
-                        ctx.ArcTo(new Point(w - flare - bottomRadius, h), new Size(bottomRadius, bottomRadius), 0, false,
-                                  SweepDirection.Clockwise, true, false);
-                        ctx.LineTo(new Point(flare + bottomRadius, h), true, false);
-                        // Sudut bawah kiri (masuk ke tengah)
-                        ctx.ArcTo(new Point(flare, h - bottomRadius), new Size(bottomRadius, bottomRadius), 0, false,
-                                  SweepDirection.Clockwise, true, false);
-                        ctx.LineTo(new Point(flare, flare), true, false);
-                        // Flare kiri: dari badan -> ujung atas kiri (tangen mulus)
-                        ctx.ArcTo(new Point(0, 0), new Size(flare, flare), 0, false,
-                                  SweepDirection.Counterclockwise, true, false);
-                    }
+                    ctx.LineTo(new Point(w, 0), true, false);
+                    // Flare kanan: dari ujung atas kanan -> badan (tangen mulus di titik ujung)
+                    ctx.ArcTo(new Point(w - flare, flare), new Size(flare, flare), 0, false,
+                              SweepDirection.Counterclockwise, true, false);
+                    ctx.LineTo(new Point(w - flare, h - bottomRadius), true, false);
+                    // Sudut bawah kanan (masuk ke tengah)
+                    ctx.ArcTo(new Point(w - flare - bottomRadius, h), new Size(bottomRadius, bottomRadius), 0, false,
+                              SweepDirection.Clockwise, true, false);
+                    ctx.LineTo(new Point(flare + bottomRadius, h), true, false);
+                    // Sudut bawah kiri (masuk ke tengah)
+                    ctx.ArcTo(new Point(flare, h - bottomRadius), new Size(bottomRadius, bottomRadius), 0, false,
+                              SweepDirection.Clockwise, true, false);
+                    ctx.LineTo(new Point(flare, flare), true, false);
+                    // Flare kiri: dari badan -> ujung atas kiri (tangen mulus)
+                    ctx.ArcTo(new Point(0, 0), new Size(flare, flare), 0, false,
+                              SweepDirection.Counterclockwise, true, false);
                 }
             }
             geometry.Freeze();
@@ -524,14 +486,6 @@ namespace WindowsNotch
 
             switch (_anchor)
             {
-                case NotchAnchor.TopLeft:
-                    Left = work.Left;
-                    Top = work.Top;
-                    break;
-                case NotchAnchor.TopRight:
-                    Left = work.Right - targetWidth;
-                    Top = work.Top;
-                    break;
                 case NotchAnchor.LeftCenter:
                     Left = work.Left;
                     Top = work.Top + (work.Height - targetHeight) / 2;
@@ -746,13 +700,10 @@ namespace WindowsNotch
                     SystemParameters.PrimaryScreenHeight);
             }
 
-            // Ukuran collapsed tiap anchor bisa berbeda (sisi vs atas)
+            // Hanya tiga anchor: tengah atas, kiri tengah, kanan tengah
             var candidates = new (NotchAnchor Anchor, double Left, double Top, double Width, double Height)[]
             {
-                (NotchAnchor.TopLeft, work.Left, work.Top, CollapsedWidth, CollapsedHeight),
                 (NotchAnchor.TopCenter, work.Left + (work.Width - CollapsedWidth) / 2, work.Top,
-                    CollapsedWidth, CollapsedHeight),
-                (NotchAnchor.TopRight, work.Right - CollapsedWidth, work.Top,
                     CollapsedWidth, CollapsedHeight),
                 (NotchAnchor.LeftCenter, work.Left, work.Top + (work.Height - SideCollapsedHeight) / 2,
                     SideCollapsedWidth, SideCollapsedHeight),
