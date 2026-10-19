@@ -7,14 +7,16 @@
 ---
 
 ## 1. Project Overview & Objective
-Develop a lightweight, responsive, and aesthetic overlay notch application for Windows. It provides quick access to media controls, system metrics, and productivity tools right from a top-center floating overlay, mimicking macOS/iOS dynamic notch behaviors without heavy memory consumption (Target RAM usage $< 60$ MB).
+Develop a lightweight, responsive, and aesthetic overlay notch application for Windows. It provides quick access to media controls, system metrics, and productivity tools right from a top-center floating overlay, mimicking macOS/iOS dynamic notch behaviors without heavy memory consumption (Target RAM usage $< 100$ MB).
 
 ---
 
 ## 2. Core Features & Functional Requirements
 
 ### 2.1 Core UI & Animations
-- **Frameless Overlay Window:** Topmost, borderless, transparent window positioned at the top-center of the primary monitor.
+- **Frameless Overlay Window:** Topmost, borderless, transparent window, initially positioned at the top-center of the primary monitor.
+- **Drag & Drop Repositioning:** The collapsed pill can be dragged freely with the left mouse button; while dragging it is rendered as a clean capsule (fully rounded ends). On release it snaps to the nearest anchor: `TopLeft`, `TopCenter`, `TopRight`, `LeftCenter`, or `RightCenter`. The chosen anchor is persisted to `%LOCALAPPDATA%\Notchi\settings.json`.
+- **Side-Docked Mode:** Left/right anchors use a compact vertical layout (album art + pause control, or clock) that sits flush against the screen edge. The expanded state still uses the horizontal media layout.
 - **Hardware-Accelerated Animations:** Smooth 60 FPS expand/collapse transitions using WPF `DoubleAnimation` with `QuinticEase` (EaseOut, 0.32s) on mouse hover.
 - **Quick Close Control:** Mouse right-click event (`MouseRightButtonDown`) to terminate the process instantly during development and usage.
 
@@ -51,6 +53,10 @@ WindowsNotch/
 - [x] Implement smooth `DoubleAnimation` expand/collapse transition on hover.
 - [x] Add right-click app termination handler.
 - [x] Refactor `MainWindow.xaml` to include structured Grid layouts for time, media info, and action buttons.
+- [x] Add drag & drop repositioning with five snap anchors (top-left/center/right, left-center, right-center).
+  - *Drag visual:* capsule shape with full corner radius while moving; anchor-specific silhouette (top flares or flush screen edge) once dropped.
+  - *Persistence:* anchor saved to `%LOCALAPPDATA%\Notchi\settings.json` and restored on startup.
+- [x] Add side-docked vertical mini layout for left/right anchors.
 - [ ] Add drop-shadow or soft rounded borders for desktop integration.
   - *Dropped:* shadow removed intentionally; the notch uses a solid black `Path` silhouette with outward top flares and 18px bottom radius.
 
