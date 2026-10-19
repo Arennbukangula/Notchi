@@ -9,8 +9,9 @@ namespace WindowsNotch
 {
     public partial class MainWindow : Window
     {
-        private const double PillWidth = 255;
+        private const double CollapsedWidth = 250;
         private const double CollapsedHeight = 40;
+        private const double ExpandedWidth = 255;
         private const double ExpandedHeight = 100;
 
         private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -20,7 +21,7 @@ namespace WindowsNotch
         public MainWindow()
         {
             InitializeComponent();
-            SetWindowHeight(CollapsedHeight);
+            SetWindowSize(CollapsedWidth, CollapsedHeight);
             StartClock();
 
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
@@ -48,9 +49,11 @@ namespace WindowsNotch
 
                 // Setelah animasi collapse selesai: window snap ke ukuran pill
                 // agar tidak ada area transparan yang menelan klik
-                if (!_isExpanded && e.NewSize.Height <= CollapsedHeight + 0.5)
+                if (!_isExpanded &&
+                    e.NewSize.Width <= CollapsedWidth + 0.5 &&
+                    e.NewSize.Height <= CollapsedHeight + 0.5)
                 {
-                    SetWindowHeight(CollapsedHeight);
+                    SetWindowSize(CollapsedWidth, CollapsedHeight);
                 }
             };
             UpdateNotchShape(new Size(PillHost.Width, PillHost.Height));
@@ -112,10 +115,10 @@ namespace WindowsNotch
 
             ApplyExpandedState(true);
 
-            // Window langsung snap ke tinggi akhir (transparan, tak terlihat),
+            // Window langsung snap ke ukuran akhir (transparan, tak terlihat),
             // lalu pill-lah yang dianimasikan -> tanpa resize OS per frame
-            SetWindowHeight(ExpandedHeight);
-            AnimatePillHeight(ExpandedHeight);
+            SetWindowSize(ExpandedWidth, ExpandedHeight);
+            AnimatePillTo(ExpandedWidth, ExpandedHeight);
         }
 
         // Saat kursor mouse keluar dari area Notch (Mengecil)
@@ -127,29 +130,30 @@ namespace WindowsNotch
             ApplyExpandedState(false);
 
             // Window baru menyusul setelah animasi pill selesai (lihat handler SizeChanged)
-            AnimatePillHeight(CollapsedHeight);
+            AnimatePillTo(CollapsedWidth, CollapsedHeight);
         }
 
-        // Posisi & lebar window tetap; hanya tinggi yang menyesuaikan.
-        // Lebar pill konstan -> konten tidak pernah re-layout horizontal (anti getar)
-        private void SetWindowHeight(double targetHeight)
+        // Snap instan ukuran window (dipakai saat expand & setelah collapse selesai)
+        private void SetWindowSize(double targetWidth, double targetHeight)
         {
-            Width = PillWidth;
+            Width = targetWidth;
             Height = targetHeight;
-            Left = (SystemParameters.PrimaryScreenWidth - PillWidth) / 2;
+            Left = (SystemParameters.PrimaryScreenWidth - targetWidth) / 2;
             Top = 0;
         }
 
-        // Animasi halus: hanya tinggi pill yang dianimasikan (layout WPF murni)
-        private void AnimatePillHeight(double targetHeight)
+        // Animasi halus: lebar melebar sedikit (250->255) dan tinggi bertambah.
+        // Lebar teks dipatok di XAML agar konten tidak re-layout horizontal (anti getar)
+        private void AnimatePillTo(double targetWidth, double targetHeight)
         {
             var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-            var heightAnim = new DoubleAnimation(targetHeight, new Duration(TimeSpan.FromSeconds(0.32)))
-            {
-                EasingFunction = easing
-            };
+            var duration = new Duration(TimeSpan.FromSeconds(0.32));
+
+            var widthAnim = new DoubleAnimation(targetWidth, duration) { EasingFunction = easing };
+            var heightAnim = new DoubleAnimation(targetHeight, duration) { EasingFunction = easing };
 
             // SnapshotAndReplace: hover cepat bolak-balik tetap mulus dari posisi sekarang
+            PillHost.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
             PillHost.BeginAnimation(FrameworkElement.HeightProperty, heightAnim);
         }
 
