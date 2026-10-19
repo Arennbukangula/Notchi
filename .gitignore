@@ -1,0 +1,19 @@
+## .NET / Visual Studio build output
+bin/
+obj/
+out/
+publish/
+
+## Rider / VS settings
+.vs/
+*.user
+*.suo
+
+## NuGet
+*.nupkg
+packages/
+
+## OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
