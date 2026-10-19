@@ -16,6 +16,7 @@ namespace WindowsNotch
 
         private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
         private bool _isExpanded;
+        private Geometry? _pillGeometry;
 
         public MainWindow()
         {
@@ -23,14 +24,26 @@ namespace WindowsNotch
             PositionAtTopCenter();
             StartClock();
 
-            // Event hover/klik kanan menempel di host (menangkap seluruh area, termasuk konten)
-            NotchHost.MouseEnter += (s, e) => ExpandNotch();
-            NotchHost.MouseLeave += (s, e) => CollapseNotch();
-            NotchHost.MouseRightButtonDown += (s, e) => Application.Current.Shutdown();
+            // Event hover/klik kanan menempel di pill (bukan seluruh window)
+            PillHost.MouseEnter += (s, e) => ExpandNotch();
+            PillHost.MouseLeave += (s, e) => CollapseNotch();
+            PillHost.MouseRightButtonDown += (s, e) => Application.Current.Shutdown();
 
             // Bentuk pill dibangun ulang setiap ukuran berubah (untuk flare atas)
-            NotchHost.SizeChanged += (s, e) => UpdateNotchShape(e.NewSize);
-            UpdateNotchShape(new Size(Width, Height));
+            PillHost.SizeChanged += (s, e) =>
+            {
+                UpdateNotchShape(e.NewSize);
+
+                // Setelah animasi collapse selesai: window snap ke ukuran pill
+                // agar tidak ada area transparan yang menelan klik
+                if (!_isExpanded &&
+                    e.NewSize.Width <= CollapsedWidth + 0.5 &&
+                    e.NewSize.Height <= CollapsedHeight + 0.5)
+                {
+                    SetWindowSize(CollapsedWidth, CollapsedHeight);
+                }
+            };
+            UpdateNotchShape(new Size(PillHost.Width, PillHost.Height));
         }
 
         // Membentuk geometri pill: tepi atas selebar pill dengan flare melengkung
@@ -68,7 +81,9 @@ namespace WindowsNotch
                           SweepDirection.Counterclockwise, true, false);
             }
             geometry.Freeze();
+            _pillGeometry = geometry;
             NotchShape.Data = geometry;
+            PillHost.Clip = geometry;   // konten tidak pernah meluber keluar bentuk pill
         }
 
         // Memosisikan jendela tepat di tengah atas layar
@@ -96,7 +111,11 @@ namespace WindowsNotch
             _isExpanded = true;
 
             ApplyExpandedState(true);
-            AnimateTo(ExpandedWidth, ExpandedHeight);
+
+            // Window langsung snap ke ukuran akhir (transparan, tak terlihat),
+            // lalu pill-lah yang dianimasikan -> tanpa resize OS per frame
+            SetWindowSize(ExpandedWidth, ExpandedHeight);
+            AnimatePillTo(ExpandedWidth, ExpandedHeight);
         }
 
         // Saat kursor mouse keluar dari area Notch (Mengecil)
@@ -106,26 +125,33 @@ namespace WindowsNotch
             _isExpanded = false;
 
             ApplyExpandedState(false);
-            AnimateTo(CollapsedWidth, CollapsedHeight);
+
+            // Window baru menyusul setelah animasi pill selesai (lihat handler SizeChanged)
+            AnimatePillTo(CollapsedWidth, CollapsedHeight);
         }
 
-        // Animasi halus 60fps: Width, Height, dan Left dianimasikan bersamaan
-        // agar pill tetap center di tengah atas selama transisi
-        private void AnimateTo(double targetWidth, double targetHeight)
+        // Snap instan ukuran window (dipakai saat expand & setelah collapse selesai)
+        private void SetWindowSize(double targetWidth, double targetHeight)
+        {
+            Width = targetWidth;
+            Height = targetHeight;
+            Left = (SystemParameters.PrimaryScreenWidth - targetWidth) / 2;
+            Top = 0;
+        }
+
+        // Animasi halus 60fps: hanya pill yang dianimasikan (layout WPF murni),
+        // Width + Height bersamaan sehingga pill tumbuh simetris dari tengah atas
+        private void AnimatePillTo(double targetWidth, double targetHeight)
         {
             var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
             var duration = new Duration(TimeSpan.FromSeconds(0.25));
 
             var widthAnim = new DoubleAnimation(targetWidth, duration) { EasingFunction = easing };
             var heightAnim = new DoubleAnimation(targetHeight, duration) { EasingFunction = easing };
-            var leftAnim = new DoubleAnimation(
-                (SystemParameters.PrimaryScreenWidth - targetWidth) / 2, duration)
-            { EasingFunction = easing };
 
             // SnapshotAndReplace: hover cepat bolak-balik tetap mulus dari posisi sekarang
-            BeginAnimation(WidthProperty, widthAnim);
-            BeginAnimation(HeightProperty, heightAnim);
-            BeginAnimation(LeftProperty, leftAnim);
+            PillHost.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
+            PillHost.BeginAnimation(FrameworkElement.HeightProperty, heightAnim);
         }
 
         // Menampilkan/menyembunyikan elemen sesuai state

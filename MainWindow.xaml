@@ -7,6 +7,7 @@
         Background="Transparent"
         Topmost="True" 
         ShowInTaskbar="False"
+        ResizeMode="NoResize"
         WindowStartupLocation="Manual">
 
     <Window.Resources>
@@ -82,9 +83,12 @@
         </Style>
     </Window.Resources>
 
-    <Grid x:Name="NotchHost" Cursor="Hand">
-        <!-- Shape pill: tepi atas flare keluar, bawah radius normal -->
-        <Path x:Name="NotchShape" Fill="Black"/>
+    <Grid>
+        <!-- Pill: ukurannya dianimasikan di dalam window yang sudah snap ukuran -->
+        <Grid x:Name="PillHost" Width="250" Height="40"
+              HorizontalAlignment="Center" VerticalAlignment="Top" Cursor="Hand">
+            <!-- Shape pill: tepi atas flare keluar, bawah radius normal -->
+            <Path x:Name="NotchShape" Fill="Black"/>
 
         <Grid Margin="16,0">
             <!-- State 1: Jam (saat tidak ada media yang diputar) -->
@@ -191,6 +195,7 @@
                     </Button>
                 </StackPanel>
             </Grid>
+        </Grid>
         </Grid>
     </Grid>
 </Window>
