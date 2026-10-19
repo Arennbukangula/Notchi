@@ -22,6 +22,7 @@ Develop a lightweight, responsive, and aesthetic overlay notch application for W
 
 ### 2.2 Widgets & Integrations
 - **Universal Media Controls:** Display current playback track, artist name, album art, and controls (Play/Pause/Skip) via Windows System Media Transport Controls (SMTC) API (Spotify, Chrome, YouTube, etc.).
+  - *Thumbnail handling:* Chrome sometimes reports its app icon before the video artwork is ready. The service keeps re-reading the thumbnail for 5 seconds after the track changes (and retries failed loads), so the video thumbnail replaces the fallback. Session selection is sticky to prevent jumping between browser tabs or apps.
 - **Clock Fallback:** When no media session is active, the collapsed notch displays the current time (`HH:mm`).
 - **System Metrics Display:** *Deferred.* Real-time battery percentage, CPU usage, and RAM usage inside the expanded notch view are out of scope for the current release; the expanded view stays a pure media player.
 - **Quick File Drop Zone:** *Deferred* to a later phase.

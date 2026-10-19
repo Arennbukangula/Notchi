@@ -25,11 +25,25 @@ namespace WindowsNotch
     /// </summary>
     public sealed class SmtcService : IDisposable
     {
+        // Setelah judul/video berubah, thumbnail Chrome kadang masih berupa icon
+        // aplikasi. Selama jendela ini thumbnail dibaca ulang agar artwork video
+        // yang datang belakangan menimpa fallback tersebut.
+        private static readonly TimeSpan ArtRetryWindow = TimeSpan.FromSeconds(5);
+
         private GlobalSystemMediaTransportControlsSessionManager? _manager;
         private GlobalSystemMediaTransportControlsSession? _session;
         private BitmapImage? _cachedArt;
         private string _cachedArtKey = string.Empty;
+        private DateTime _artKeyChangedAt;
         private readonly System.Threading.SemaphoreSlim _refreshGate = new(1, 1);
+        private readonly System.Threading.Timer _artRetryTimer;
+
+        public SmtcService()
+        {
+            _artRetryTimer = new System.Threading.Timer(
+                _ => RetryThumbnailTick(), null,
+                TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
 
         /// <summary>Dipanggil setiap data media berubah; null berarti tidak ada sesi media.</summary>
         public event Action<MediaInfo?>? MediaChanged;
@@ -56,12 +70,31 @@ namespace WindowsNotch
         {
             try
             {
-                DetachSession();
-
                 var sessions = _manager?.GetSessions();
-                _session = sessions?.FirstOrDefault(IsPlaying) ?? _manager?.GetCurrentSession();
+                var current = _session;
 
-                if (_session != null)
+                GlobalSystemMediaTransportControlsSession? next;
+                if (current != null && sessions != null && sessions.Contains(current))
+                {
+                    // Sticky: pertahankan sesi yang sedang berjalan agar tidak
+                    // berpindah-pindah antar tab/aplikasi saat SessionsChanged.
+                    next = IsPlaying(current) ? current : sessions.FirstOrDefault(IsPlaying);
+                    next ??= current;
+                }
+                else
+                {
+                    next = sessions?.FirstOrDefault(IsPlaying) ?? _manager?.GetCurrentSession();
+                }
+
+                if (!ReferenceEquals(next, current))
+                {
+                    DetachSession();
+                    _session = next;
+                    _cachedArt = null;
+                    _cachedArtKey = string.Empty;
+                }
+
+                if (_session != null && !ReferenceEquals(next, current))
                 {
                     _session.MediaPropertiesChanged += OnSessionEvent;
                     _session.PlaybackInfoChanged += OnSessionEvent;
@@ -103,6 +136,25 @@ namespace WindowsNotch
             GlobalSystemMediaTransportControlsSession sender,
             object args) => _ = RefreshAsync();
 
+        // Memastikan jendela retry tetap berjalan walau tidak ada event baru
+        // (mis. Chrome mengirim artwork video tanpa MediaPropertiesChanged).
+        private void RetryThumbnailTick()
+        {
+            if (_cachedArtKey.Length == 0) return;
+
+            var age = DateTime.UtcNow - _artKeyChangedAt;
+            if (_cachedArt != null)
+            {
+                if (age >= ArtRetryWindow) return;
+            }
+            else if (age >= TimeSpan.FromSeconds(30))
+            {
+                return;
+            }
+
+            _ = RefreshAsync();
+        }
+
         private async Task RefreshAsync()
         {
             // Serialisasi refresh agar event beruntun tidak saling menimpa
@@ -128,12 +180,28 @@ namespace WindowsNotch
                     artist = properties.AlbumArtist ?? string.Empty;
                 }
 
-                // Thumbnail hanya dimuat ulang saat track berganti
-                var artKey = $"{title}|{artist}|{properties.AlbumTitle}";
+                // Kunci thumbnail termasuk app sumber agar artwork tidak tertukar
+                var sourceAppId = session.SourceAppUserModelId ?? string.Empty;
+                var artKey = $"{sourceAppId}|{title}|{artist}|{properties.AlbumTitle}";
+
                 if (artKey != _cachedArtKey)
                 {
                     _cachedArtKey = artKey;
-                    _cachedArt = await LoadThumbnailAsync(properties.Thumbnail);
+                    _artKeyChangedAt = DateTime.UtcNow;
+                    _cachedArt = null;
+                }
+
+                // Chrome kadang mengirim icon aplikasi lebih dulu dan artwork video
+                // menyusul. Selama jendela retry, baca ulang dan pakai yang terakhir.
+                // Jangan pernah mengunci hasil null: coba lagi pada refresh berikutnya.
+                bool insideRetryWindow = DateTime.UtcNow - _artKeyChangedAt < ArtRetryWindow;
+                if (_cachedArt == null || insideRetryWindow)
+                {
+                    var art = await LoadThumbnailAsync(properties.Thumbnail);
+                    if (art != null)
+                    {
+                        _cachedArt = art;
+                    }
                 }
 
                 MediaChanged?.Invoke(new MediaInfo
@@ -141,7 +209,7 @@ namespace WindowsNotch
                     Title = title,
                     Artist = artist,
                     AlbumArt = _cachedArt,
-                    SourceAppId = session.SourceAppUserModelId ?? string.Empty,
+                    SourceAppId = sourceAppId,
                     IsPlaying = playback.PlaybackStatus ==
                                 GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
                     Position = GetPosition(),
@@ -269,6 +337,8 @@ namespace WindowsNotch
 
         public void Dispose()
         {
+            _artRetryTimer.Dispose();
+
             if (_manager != null)
             {
                 _manager.SessionsChanged -= OnSessionsChanged;
