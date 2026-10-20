@@ -25,7 +25,8 @@ Develop a lightweight, responsive, and aesthetic overlay notch application for W
   - *Thumbnail handling:* Chrome sometimes reports its app icon before the video artwork is ready. The service keeps re-reading the thumbnail for 5 seconds after the track changes (and retries failed loads), so the video thumbnail replaces the fallback. Session selection is sticky to prevent jumping between browser tabs or apps.
 - **Idle Dashboard:** When no media session is active, the collapsed capsule displays the current time and day/date. Hovering reveals the full date, battery status, and local CPU/RAM/disk usage.
 - **System Metrics Display:** Implemented for the expanded idle view using local Win32 interop and managed APIs: battery via `GetSystemPowerStatus`, CPU via `GetSystemTimes`, RAM via `GlobalMemoryStatusEx`, and disk via `DriveInfo`. CPU/RAM/disk/battery visibility is configurable through the persisted settings. No network, weather, or internet integration is included.
-- **Quick File Drop Zone:** *Deferred* to a later phase.
+- **Quick File Drop Zone:** Drag files or folders onto the notch to open a compact shelf with Open, Show in Explorer, Copy path, Open all, and Clear actions. The list is session-only and is capped for safety.
+- **Settings Window:** Toggle CPU/RAM/disk/battery metrics and Windows autostart. Changes are saved immediately to `settings.json`; autostart state is mirrored from the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key.
 
 ### 2.3 System & Performance Constraints
 - **Startup Integration:** Optional "Start on Boot" registry entry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
@@ -41,6 +42,11 @@ WindowsNotch/
 ├── App.xaml.cs
 ├── MainWindow.xaml       # UI Layout & Visual Elements
 ├── MainWindow.xaml.cs    # Window Logic, Position & Animations
+├── SettingsWindow.xaml/.cs # Metric toggles & autostart settings
+├── DropShelfWindow.xaml/.cs # File/folder quick action shelf
+├── AppSettings.cs        # Persisted settings model
+├── SettingsStore.cs      # Settings JSON load/save
+├── StartupService.cs     # HKCU Run registry integration
 ├── SmtcService.cs        # Windows Media Session (SMTC) Integration
 ├── SystemStatusService.cs # Local CPU/RAM/disk/battery sampling
 └── Notchi.csproj         # Project Configuration & Dependencies
@@ -72,16 +78,16 @@ WindowsNotch/
   - *Implementation:* `SystemStatusService` samples only while no media session is active; the collapsed capsule stays limited to time/day/date, and the side-docked expanded view shows the full metric set. Network/weather widgets were intentionally removed.
 
 ### Phase 3: Autostart, Optimization & Deployment
-- [ ] Implement registry helper for Auto-Start on Windows boot.
-  - *Deferred* to a later phase.
+- [x] Implement registry helper for Auto-Start on Windows boot.
+  - *Implementation:* `StartupService` writes/deletes the `Notchi` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Disabled by default; the path is refreshed on launch when enabled.
+- [x] Add Settings window for metric visibility and autostart.
+- [x] Add quick file drop shelf for files and folders.
 - [x] Verify memory/CPU usage limits in Task Manager during idle and active animation states.
   - *Measured (Release, single-file, idle 40s):* CPU `0.07%` average, private bytes `74.9 MB`, working set `146.6 MB`, 17 threads.
   - *Reference:* an empty .NET 8 WPF app measures `78.6 MB` private bytes / `122.8 MB` working set on the same machine, so Notchi is already at or below the framework baseline.
-- [x] Compile self-contained single-file binary using `dotnet publish`:
-  ```bash
-  dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true
-  ```
-  - *Result:* `bin/Release/net8.0-windows10.0.19041.0/win-x64/publish/Notchi.exe` (25.6 MB). Requires the .NET 8 Desktop Runtime on the target machine.
+- [x] Compile a single-file binary using `dotnet publish`.
+  - *Framework-dependent build:* `dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true` produced a 25.6 MB executable that requires the .NET 8 Desktop Runtime.
+  - *Recommended distribution build:* use the self-contained command documented in `README.md` so the target laptop does not need a separate runtime install.
 
 ---
 
