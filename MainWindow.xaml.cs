@@ -30,6 +30,16 @@ namespace WindowsNotch
         private const double SideExpandedHeight = 107;
         private const double SideCornerRadius = 20;
 
+        private const double FeatureButtonWidth = 30;
+        private const double FeatureButtonTop = 5;
+        private const double FeatureGap = 8;
+        private const double FeatureDecorationWidth = FeatureGap + FeatureButtonWidth;
+        private const double FeaturePanelOpenOffset = 8;
+        private const double FeaturePanelStartOffset = -6;
+        private const long FeaturePanelToggleGuardMs = 250;
+
+        private static readonly Duration PillPhaseDuration = new(TimeSpan.FromSeconds(0.16));
+
         private const int GwlExStyle = -20;
         private const int WsExNoActivate = 0x08000000;
         private const int WsExToolWindow = 0x00000080;
@@ -102,6 +112,9 @@ namespace WindowsNotch
         private bool _isExpanded;
         private bool _isDragging;
         private bool _dragMoved;
+        private bool _featurePanelOpen;
+        private long _featurePanelClosedAt;
+        private int _animationVersion;
         private Point _dragStartCursor;
         private Point _dragGrab;
         private NotchAnchor _anchor = NotchAnchor.TopCenter;
@@ -148,7 +161,8 @@ namespace WindowsNotch
             {
                 // DPI baru akurat setelah window ter-render
                 UpdateMonitorFromWindow();
-                SetWindowSize(Width, Height);
+                var (w, h) = _isExpanded ? ExpandedSize : CollapsedSize;
+                SetWindowSize(w, h);
             };
             StartClock();
             ApplySettingsVisibility();
@@ -156,22 +170,35 @@ namespace WindowsNotch
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
             {
-                if (_isDragging) return;
+                if (_isDragging || _featurePanelOpen) return;
                 _collapseTimer.Stop();
                 ExpandNotch();
             };
             PillHost.MouseLeave += (s, e) =>
             {
-                if (_isDragging) return;
+                if (_isDragging || _featurePanelOpen) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
             _collapseTimer.Tick += (s, e) =>
             {
                 _collapseTimer.Stop();
-                if (!_isDragging) CollapseNotch();
+                if (!_isDragging && !_featurePanelOpen) CollapseNotch();
             };
             PillHost.MouseRightButtonDown += (s, e) => Application.Current.Shutdown();
+
+            // Kapsul fitur di sisi kanan notch
+            FeatureButton.MouseEnter += (s, e) => _collapseTimer.Stop();
+            FeatureButton.MouseLeave += (s, e) =>
+            {
+                if (_isDragging || _featurePanelOpen) return;
+                _collapseTimer.Stop();
+                _collapseTimer.Start();
+            };
+            FeatureButton.Click += OnFeatureButtonClick;
+            FeaturePopup.Opened += OnFeaturePopupOpened;
+            FeaturePopup.Closed += OnFeaturePopupClosed;
+            ExitButton.Click += (s, e) => Application.Current.Shutdown();
 
             // Drag & drop: geser notch ke salah satu titik snap
             PillHost.PreviewMouseLeftButtonDown += OnPillMouseDown;
@@ -183,6 +210,7 @@ namespace WindowsNotch
                 if (!_isDragging) return;
                 _isDragging = false;
                 PillHost.Cursor = Cursors.Hand;
+                UpdateFeatureButtonVisibility();
                 UpdateNotchShape(PillHost.RenderSize);
             };
 
@@ -190,6 +218,7 @@ namespace WindowsNotch
             PillHost.SizeChanged += (s, e) =>
             {
                 UpdateNotchShape(e.NewSize);
+                UpdateFeatureButtonPosition(e.NewSize.Width);
 
                 // Setelah animasi collapse selesai: window snap ke ukuran pill
                 // agar tidak ada area transparan yang menelan klik
@@ -247,6 +276,77 @@ namespace WindowsNotch
             if (!_isSeeking) return;
             _isSeeking = false;
             _ = _smtc.SeekAsync(TimeSpan.FromSeconds(ProgressSlider.Value));
+        }
+
+        // ===================== Panel Fitur =====================
+
+        private void OnFeatureButtonClick(object sender, RoutedEventArgs e)
+        {
+            if (FeaturePopup.IsOpen)
+            {
+                FeaturePopup.IsOpen = false;
+                return;
+            }
+
+            // StaysOpen=false menutup popup saat klik di luar, termasuk saat
+            // mengklik ikon ini; jangan biarkan klik yang sama membukanya ulang.
+            if (Environment.TickCount64 - _featurePanelClosedAt < FeaturePanelToggleGuardMs)
+            {
+                return;
+            }
+
+            OpenFeaturePanel();
+        }
+
+        private void OpenFeaturePanel()
+        {
+            if (IsSideAnchor || _featurePanelOpen) return;
+
+            _featurePanelOpen = true;
+            _collapseTimer.Stop();
+
+            FeaturePopup.BeginAnimation(Popup.HorizontalOffsetProperty, null);
+            FeaturePopup.HorizontalOffset = FeaturePanelStartOffset;
+            FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty, null);
+            FeaturePanelCard.Opacity = 0;
+
+            FeaturePopup.IsOpen = true;
+        }
+
+        private void OnFeaturePopupOpened(object? sender, EventArgs e)
+        {
+            var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            var duration = new Duration(TimeSpan.FromSeconds(0.2));
+
+            // Slide dari balik ikon ke kanan + fade-in
+            FeaturePopup.BeginAnimation(Popup.HorizontalOffsetProperty,
+                new DoubleAnimation(FeaturePanelOpenOffset, duration) { EasingFunction = easing });
+            FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(1, duration) { EasingFunction = easing });
+
+            // Panel tidak boleh merebut fokus aplikasi lain
+            if (PresentationSource.FromVisual(FeaturePanelCard) is HwndSource source)
+            {
+                int exStyle = GetWindowLong(source.Handle, GwlExStyle);
+                SetWindowLong(source.Handle, GwlExStyle, exStyle | WsExNoActivate | WsExToolWindow);
+            }
+        }
+
+        private void OnFeaturePopupClosed(object? sender, EventArgs e)
+        {
+            _featurePanelOpen = false;
+            _featurePanelClosedAt = Environment.TickCount64;
+
+            FeaturePopup.BeginAnimation(Popup.HorizontalOffsetProperty, null);
+            FeaturePopup.HorizontalOffset = FeaturePanelOpenOffset;
+            FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty, null);
+            FeaturePanelCard.Opacity = 1;
+
+            if (_isDragging) return;
+            if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+
+            _collapseTimer.Stop();
+            CollapseNotch();
         }
 
         private void OnMediaChanged(MediaInfo? info)
@@ -480,7 +580,10 @@ namespace WindowsNotch
         {
             _anchor = anchor;
 
+            if (FeaturePopup.IsOpen) FeaturePopup.IsOpen = false;
+
             // Hentikan animasi yang mungkin masih berjalan sebelum mengubah ukuran dasar
+            _animationVersion++;
             PillHost.BeginAnimation(FrameworkElement.WidthProperty, null);
             PillHost.BeginAnimation(FrameworkElement.HeightProperty, null);
 
@@ -501,6 +604,7 @@ namespace WindowsNotch
 
             UpdateContentMargin();
             SetWindowSize(w, h);
+            UpdateFeatureButtonPosition(w);
             UpdateNotchShape(new Size(w, h));
             UpdateVisualState();
         }
@@ -512,10 +616,33 @@ namespace WindowsNotch
                 : new Thickness(16, 0, 16, 0);
         }
 
-        // Snap instan ukuran window (dipakai saat expand & setelah collapse selesai)
+        // Kapsul ikon hanya tampil pada mode atas-tengah dan tidak saat digeser
+        private void UpdateFeatureButtonVisibility()
+        {
+            bool visible = !IsSideAnchor && !_isDragging;
+            FeatureButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!visible && FeaturePopup.IsOpen)
+            {
+                FeaturePopup.IsOpen = false;
+            }
+        }
+
+        // Tempelkan kapsul tepat di kanan tepi pill (pill selalu di tengah window)
+        private void UpdateFeatureButtonPosition(double pillWidth)
+        {
+            double left = (Width + pillWidth) / 2 + FeatureGap;
+            FeatureButton.Margin = new Thickness(left, FeatureButtonTop, 0, 0);
+        }
+
+        // Snap instan ukuran window (dipakai saat expand & setelah collapse selesai).
+        // Mode atas-tengah menyisakan ruang di kanan untuk kapsul ikon; pill tetap
+        // di tengah layar karena window juga di-center.
         private void SetWindowSize(double targetWidth, double targetHeight)
         {
-            Width = targetWidth;
+            double windowWidth = targetWidth + (IsSideAnchor ? 0 : 2 * FeatureDecorationWidth);
+
+            Width = windowWidth;
             Height = targetHeight;
 
             var work = _monitor;
@@ -533,14 +660,16 @@ namespace WindowsNotch
                     Top = work.Top + (work.Height - targetHeight) / 2;
                     break;
                 case NotchAnchor.RightCenter:
-                    Left = work.Right - targetWidth;
+                    Left = work.Right - windowWidth;
                     Top = work.Top + (work.Height - targetHeight) / 2;
                     break;
                 default:
-                    Left = work.Left + (work.Width - targetWidth) / 2;
+                    Left = work.Left + (work.Width - windowWidth) / 2;
                     Top = work.Top;
                     break;
             }
+
+            UpdateFeatureButtonPosition(targetWidth);
         }
 
         // Area kerja monitor (dalam DIP) tempat notch berada
@@ -623,8 +752,10 @@ namespace WindowsNotch
             double scaleY = dpi.DpiScaleY <= 0 ? 1 : dpi.DpiScaleY;
 
             _dragStartCursor = new Point(cursor.X, cursor.Y);
-            // Offset kursor terhadap origin window (DIP) agar notch tidak melompat
-            _dragGrab = new Point(cursor.X / scaleX - Left, cursor.Y / scaleY - Top);
+            // Offset kursor terhadap tepi kiri pill (bukan window) agar notch tidak
+            // melompat saat window menyusut ke ukuran drag tanpa ruang ikon.
+            double pillOffsetX = Math.Max(0, (ActualWidth - PillHost.ActualWidth) / 2);
+            _dragGrab = new Point(cursor.X / scaleX - Left - pillOffsetX, cursor.Y / scaleY - Top);
             _dragMoved = false;
             _isDragging = true;
             _collapseTimer.Stop();
@@ -672,6 +803,7 @@ namespace WindowsNotch
                 ApplyExpandedState(false);
             }
 
+            _animationVersion++;
             PillHost.BeginAnimation(FrameworkElement.WidthProperty, null);
             PillHost.BeginAnimation(FrameworkElement.HeightProperty, null);
 
@@ -683,6 +815,7 @@ namespace WindowsNotch
             PillHost.Height = ch;
             Width = cw;
             Height = ch;
+            UpdateFeatureButtonVisibility();
 
             // Jaga posisi notch tetap di bawah kursor setelah ukuran berubah
             grabX = Math.Clamp(grabX, 0, cw);
@@ -720,6 +853,7 @@ namespace WindowsNotch
                 ApplyExpandedState(false);
             }
 
+            _animationVersion++;
             PillHost.BeginAnimation(FrameworkElement.WidthProperty, null);
             PillHost.BeginAnimation(FrameworkElement.HeightProperty, null);
 
@@ -826,6 +960,8 @@ namespace WindowsNotch
         // Menentukan layout mana yang tampil: idle dashboard, media horizontal, atau mini vertikal di sisi
         private void UpdateVisualState()
         {
+            UpdateFeatureButtonVisibility();
+
             bool hasMedia = _media != null;
             bool sideCollapsed = IsSideAnchor && !_isExpanded;
 
@@ -943,6 +1079,7 @@ namespace WindowsNotch
         {
             if (_isExpanded) return;
             _isExpanded = true;
+            _animationVersion++;
 
             ApplyExpandedState(true);
 
@@ -950,7 +1087,7 @@ namespace WindowsNotch
             // lalu pill-lah yang dianimasikan -> tanpa resize OS per frame
             var (w, h) = ExpandedSize;
             SetWindowSize(w, h);
-            AnimatePillTo(w, h);
+            AnimatePillTo(w, h, widthFirst: true);
         }
 
         // Saat kursor mouse keluar dari area Notch (Mengecil)
@@ -958,27 +1095,95 @@ namespace WindowsNotch
         {
             if (!_isExpanded) return;
             _isExpanded = false;
+            _animationVersion++;
 
             ApplyExpandedState(false);
 
             // Window baru menyusul setelah animasi pill selesai (lihat handler SizeChanged)
             var (w, h) = CollapsedSize;
-            AnimatePillTo(w, h);
+            AnimatePillTo(w, h, widthFirst: false);
         }
 
-        // Animasi halus: lebar melebar sedikit (250->255) dan tinggi bertambah.
-        // Lebar teks dipatok di XAML agar konten tidak re-layout horizontal (anti getar)
-        private void AnimatePillTo(double targetWidth, double targetHeight)
+        // Animasi dua tahap agar capsule tidak bergetar:
+        // buka = lebar dulu lalu tinggi, tutup = tinggi dulu lalu lebar.
+        private void AnimatePillTo(double targetWidth, double targetHeight, bool widthFirst)
         {
-            var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-            var duration = new Duration(TimeSpan.FromSeconds(0.32));
+            int version = _animationVersion;
 
-            var widthAnim = new DoubleAnimation(targetWidth, duration) { EasingFunction = easing };
-            var heightAnim = new DoubleAnimation(targetHeight, duration) { EasingFunction = easing };
+            double startWidth = PillHost.Width;
+            double startHeight = PillHost.Height;
+            if (double.IsNaN(startWidth) || startWidth <= 0) startWidth = PillHost.ActualWidth;
+            if (double.IsNaN(startHeight) || startHeight <= 0) startHeight = PillHost.ActualHeight;
 
-            // SnapshotAndReplace: hover cepat bolak-balik tetap mulus dari posisi sekarang
-            PillHost.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
-            PillHost.BeginAnimation(FrameworkElement.HeightProperty, heightAnim);
+            // Bekukan posisi saat ini supaya hover cepat bolak-balik tetap mulus
+            PillHost.BeginAnimation(FrameworkElement.WidthProperty, null);
+            PillHost.BeginAnimation(FrameworkElement.HeightProperty, null);
+            PillHost.Width = startWidth;
+            PillHost.Height = startHeight;
+
+            // Tutup: tinggi menyusut lebih dulu, lebar menyusul dengan sedikit
+            // overlap. Keduanya dijadwalkan sekaligus agar tidak ada jeda frame
+            // di antara tahap (penyebab animasi terasa patah).
+            if (!widthFirst)
+            {
+                var heightAnim = new DoubleAnimation(
+                    startHeight, targetHeight, new Duration(TimeSpan.FromSeconds(0.2)))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+                var widthAnim = new DoubleAnimation(
+                    startWidth, targetWidth, new Duration(TimeSpan.FromSeconds(0.2)))
+                {
+                    BeginTime = TimeSpan.FromSeconds(0.11),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                };
+
+                PillHost.BeginAnimation(FrameworkElement.HeightProperty, heightAnim);
+                PillHost.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
+                return;
+            }
+
+            var firstProperty = widthFirst
+                ? FrameworkElement.WidthProperty
+                : FrameworkElement.HeightProperty;
+            double firstStart = widthFirst ? startWidth : startHeight;
+            double firstTarget = widthFirst ? targetWidth : targetHeight;
+
+            if (Math.Abs(firstTarget - firstStart) < 0.5)
+            {
+                AnimatePillSecondPhase(targetWidth, targetHeight, widthFirst, version);
+                return;
+            }
+
+            var firstAnim = new DoubleAnimation(firstStart, firstTarget, PillPhaseDuration)
+            {
+                EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut }
+            };
+            firstAnim.Completed += (s, e) =>
+                AnimatePillSecondPhase(targetWidth, targetHeight, widthFirst, version);
+
+            PillHost.BeginAnimation(firstProperty, firstAnim);
+        }
+
+        private void AnimatePillSecondPhase(
+            double targetWidth, double targetHeight, bool widthFirst, int version)
+        {
+            if (version != _animationVersion) return;
+
+            var property = widthFirst
+                ? FrameworkElement.HeightProperty
+                : FrameworkElement.WidthProperty;
+            double target = widthFirst ? targetHeight : targetWidth;
+            double current = widthFirst ? PillHost.Height : PillHost.Width;
+
+            if (Math.Abs(target - current) < 0.5) return;
+
+            var anim = new DoubleAnimation(current, target, PillPhaseDuration)
+            {
+                EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            PillHost.BeginAnimation(property, anim);
         }
 
         protected override void OnClosed(EventArgs e)
