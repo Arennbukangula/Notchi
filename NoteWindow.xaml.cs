@@ -42,9 +42,11 @@ namespace WindowsNotch
             CloseButton.Click += (s, e) => CloseFromUser();
 
             Activated += (s, e) => _isReady = true;
-            Deactivated += (s, e) =>
+            Deactivated += OnDeactivated;
+            Closed += (s, e) =>
             {
-                if (_isReady) RequestClose();
+                _isClosing = true;
+                _isReady = false;
             };
 
             Loaded += (s, e) =>
@@ -71,12 +73,41 @@ namespace WindowsNotch
             RequestClose();
         }
 
+        private void OnDeactivated(object? sender, EventArgs e)
+        {
+            if (!_isReady || _isClosing || !IsVisible) return;
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (_isClosing || !IsVisible || IsActive) return;
+                if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+
+                RequestClose();
+            }));
+        }
+
         private void RequestClose()
         {
             if (_isClosing) return;
 
             _isClosing = true;
-            Close();
+
+            if (!IsLoaded ||
+                Dispatcher.HasShutdownStarted ||
+                Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            try
+            {
+                Close();
+            }
+            catch (InvalidOperationException)
+            {
+                // The window is already in its closing sequence.
+            }
         }
 
         private void LoadNote()

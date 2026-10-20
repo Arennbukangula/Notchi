@@ -103,6 +103,7 @@ Notchi/
 ├── AppSettings.cs              # Persisted settings model
 ├── SettingsStore.cs            # JSON load/save for settings
 ├── StartupService.cs           # HKCU Run registry integration
+├── CrashLogger.cs              # Local crash log writer
 ├── SmtcService.cs              # SMTC media session wrapper (metadata, artwork, controls)
 ├── SystemStatusService.cs      # Local CPU/RAM/disk/battery sampling for the idle dashboard
 ├── Notchi.csproj               # .NET 8 WPF project
@@ -116,6 +117,16 @@ Notchi/
 - The file drop shelf is session-only; its list is cleared when the shelf closes. It does not move or upload files.
 - System metrics are read locally and are only shown in the expanded idle dashboard. There is no network, weather, or internet integration. Each metric can be hidden from the Settings window or with the `ShowCpu`, `ShowRam`, `ShowDisk`, and `ShowBattery` settings.
 - The side-docked collapsed capsule intentionally shows only the time, day, and date; CPU/RAM/disk/battery appear after hovering.
+
+## Troubleshooting
+
+If Notchi closes unexpectedly, check the local crash log:
+
+```text
+%LOCALAPPDATA%\Notchi\notchi.log
+```
+
+The log records unhandled UI, application-domain, and background-task exceptions. When it grows beyond 1 MB, the previous file is kept as `notchi.log.old`.
 
 ## License
 

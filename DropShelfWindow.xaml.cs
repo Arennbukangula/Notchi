@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace WindowsNotch
 {
@@ -38,9 +39,11 @@ namespace WindowsNotch
             ClearButton.Click += (s, e) => ClearItems();
 
             Activated += (s, e) => _isReady = true;
-            Deactivated += (s, e) =>
+            Deactivated += OnDeactivated;
+            Closed += (s, e) =>
             {
-                if (_isReady) RequestClose();
+                _isClosing = true;
+                _isReady = false;
             };
 
             PreviewKeyDown += OnPreviewKeyDown;
@@ -241,12 +244,41 @@ namespace WindowsNotch
             StatusText.Foreground = isError ? ErrorBrush : MutedBrush;
         }
 
+        private void OnDeactivated(object? sender, EventArgs e)
+        {
+            if (!_isReady || _isClosing || !IsVisible) return;
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (_isClosing || !IsVisible || IsActive) return;
+                if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+
+                RequestClose();
+            }));
+        }
+
         private void RequestClose()
         {
             if (_isClosing) return;
 
             _isClosing = true;
-            Close();
+
+            if (!IsLoaded ||
+                Dispatcher.HasShutdownStarted ||
+                Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            try
+            {
+                Close();
+            }
+            catch (InvalidOperationException)
+            {
+                // The window is already in its closing sequence.
+            }
         }
 
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
