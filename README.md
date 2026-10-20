@@ -92,6 +92,22 @@ publish\win-x64\Notchi.exe
 
 For a smaller framework-dependent build, use `--self-contained false`; the target machine must then have the .NET 8 Desktop Runtime installed.
 
+## Installer
+
+The Inno Setup script is in `installer\Notchi.iss` and packages the contents of `publish\win-x64`. Build the publish output first, then compile the installer with [Inno Setup 6](https://jrsoftware.org/isinfo.php):
+
+```powershell
+iscc .\installer\Notchi.iss
+```
+
+Output:
+
+```text
+publish\NotchiSetup-x64.exe
+```
+
+The installer is per-user (`PrivilegesRequired=lowest`) and installs to `%LOCALAPPDATA%\Programs\Notchi`, so no administrator rights are required.
+
 ## Project Structure
 
 ```text
@@ -108,6 +124,7 @@ Notchi/
 ├── SmtcService.cs              # SMTC media session wrapper (metadata, artwork, controls)
 ├── SystemStatusService.cs      # Local CPU/RAM/disk/battery sampling for the idle dashboard
 ├── Notchi.csproj               # .NET 8 WPF project
+├── installer\Notchi.iss        # Inno Setup installer script
 └── notch_application_prd_roadmap.md  # Product requirements and roadmap
 ```
 
