@@ -6,7 +6,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace WindowsNotch
 {
@@ -25,7 +24,6 @@ namespace WindowsNotch
         private static readonly Brush ErrorBrush = FrozenBrush(0xFF, 0x6B, 0x6B);
 
         private readonly List<DroppedFileItem> _items = new();
-        private bool _isReady;
         private bool _isClosing;
 
         public DropShelfWindow(IEnumerable<string> paths)
@@ -38,13 +36,7 @@ namespace WindowsNotch
             OpenAllButton.Click += (s, e) => OpenAll();
             ClearButton.Click += (s, e) => ClearItems();
 
-            Activated += (s, e) => _isReady = true;
-            Deactivated += OnDeactivated;
-            Closed += (s, e) =>
-            {
-                _isClosing = true;
-                _isReady = false;
-            };
+            Closed += (s, e) => _isClosing = true;
 
             PreviewKeyDown += OnPreviewKeyDown;
             Closing += (s, e) => _isClosing = true;
@@ -93,6 +85,11 @@ namespace WindowsNotch
             EmptyState.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
             OpenAllButton.IsEnabled = hasItems;
             ClearButton.IsEnabled = hasItems;
+
+            if (hasItems && string.IsNullOrEmpty(StatusText.Text))
+            {
+                SetStatus("Lepas file lagi ke notch untuk menambah", isError: false);
+            }
 
             Height = Math.Clamp(130 + _items.Count * 42, 170, 340);
         }
@@ -242,20 +239,6 @@ namespace WindowsNotch
         {
             StatusText.Text = text;
             StatusText.Foreground = isError ? ErrorBrush : MutedBrush;
-        }
-
-        private void OnDeactivated(object? sender, EventArgs e)
-        {
-            if (!_isReady || _isClosing || !IsVisible) return;
-            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
-
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
-            {
-                if (_isClosing || !IsVisible || IsActive) return;
-                if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
-
-                RequestClose();
-            }));
         }
 
         private void RequestClose()

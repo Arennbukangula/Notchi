@@ -28,6 +28,8 @@ namespace WindowsNotch
         private const double SideExpandedWidth = 300;
         private const double SideExpandedHeight = 107;
         private const double SideCornerRadius = 20;
+        private const double SideFeatureInset =
+            (SideCollapsedWidth - FeatureButtonWidth) / 2;
 
         private const double FeatureButtonWidth = 30;
         private const double FeatureButtonTop = 5;
@@ -812,12 +814,15 @@ namespace WindowsNotch
         {
             if (IsSideAnchor)
             {
-                // Mode sisi: ikon di pojok sesuai sisi layar, dengan jarak dari tepi
-                double inset = Math.Min(FeatureGap,
-                    Math.Max(0, (pillWidth - FeatureButtonWidth) / 2));
+                // Mode sisi: ikon menempel ke tepi layar. Untuk sisi kanan gunakan
+                // lebar window, bukan lebar pill yang sedang dianimasikan, supaya
+                // ikon tidak ikut bergeser saat collapse.
+                double windowWidth = Width > 0 && !double.IsNaN(Width)
+                    ? Width
+                    : ActualWidth;
                 double left = _anchor == NotchAnchor.RightCenter
-                    ? pillWidth - FeatureButtonWidth - inset
-                    : inset;
+                    ? Math.Max(0, windowWidth - FeatureButtonWidth - SideFeatureInset)
+                    : SideFeatureInset;
                 double top = pillHeight + FeatureGap;
                 FeatureButton.Margin = new Thickness(left, top, 0, 0);
                 return;

@@ -9,7 +9,7 @@ A lightweight Windows "notch" overlay inspired by the macOS notch and Dynamic Is
 - **Idle dashboard** — when no media session is active, the collapsed capsule shows the time, day, and date. Hovering reveals the full date, battery status, and local CPU/RAM/disk usage.
 - **Settings window** — toggle CPU/RAM/disk/battery metrics and enable or disable Windows autostart. Changes are saved immediately.
 - **Auto-start at login** — optional `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` entry, disabled by default. The saved path is refreshed automatically when Notchi launches from a new location.
-- **Quick file drop shelf** — drag files or folders onto the notch to open a compact shelf with **Buka**, **Tampilkan di Explorer**, **Salin path**, **Buka semua**, and **Bersihkan** actions.
+- **Quick file drop shelf** — drag files or folders onto the notch to open a compact staging shelf with **Buka**, **Tampilkan di Explorer**, **Salin path**, **Buka semua**, and **Bersihkan** actions. The shelf stays open until you close it, and dropping more files adds them to the same list.
 - **Hover animation** — smooth expand/collapse using `QuinticEase` (EaseOut, 0.32 s).
 - **Drag & drop with snapping** — drag the pill anywhere; while dragging it renders as a clean capsule, and on release it snaps to the nearest anchor:
   - Top center
@@ -53,7 +53,7 @@ bin\Debug\net8.0-windows10.0.19041.0\Notchi.exe
 | Hover the icon next to the notch | Opens the feature menu (Catatan / Pengaturan / Keluar) |
 | Left-click and drag | Moves the notch as a capsule |
 | Release after dragging | Snaps to the nearest anchor (top center / left / right) |
-| Drag files or folders onto the notch | Opens the file drop shelf |
+| Drag files or folders onto the notch | Opens the file drop shelf; drop more files to add them to the list |
 | Right-click | Closes the app |
 
 The saved anchor lives at:
@@ -114,7 +114,7 @@ Notchi/
 
 - Album art and metadata depend on what the source app publishes through SMTC. If an app never provides artwork, no thumbnail can be shown.
 - Autostart uses the current user's registry hive, so it needs no administrator rights. If the executable is moved after autostart is enabled, launch it once from the new location to refresh the saved path.
-- The file drop shelf is session-only; its list is cleared when the shelf closes. It does not move or upload files.
+- The file drop shelf is session-only; its list is cleared when the shelf closes. It does not move or upload files. The shelf does not close when it loses focus, so you can drag more files onto the notch and add them to the same list.
 - System metrics are read locally and are only shown in the expanded idle dashboard. There is no network, weather, or internet integration. Each metric can be hidden from the Settings window or with the `ShowCpu`, `ShowRam`, `ShowDisk`, and `ShowBattery` settings.
 - The side-docked collapsed capsule intentionally shows only the time, day, and date; CPU/RAM/disk/battery appear after hovering.
 

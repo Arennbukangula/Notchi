@@ -25,7 +25,7 @@ Develop a lightweight, responsive, and aesthetic overlay notch application for W
   - *Thumbnail handling:* Chrome sometimes reports its app icon before the video artwork is ready. The service keeps re-reading the thumbnail for 5 seconds after the track changes (and retries failed loads), so the video thumbnail replaces the fallback. Session selection is sticky to prevent jumping between browser tabs or apps.
 - **Idle Dashboard:** When no media session is active, the collapsed capsule displays the current time and day/date. Hovering reveals the full date, battery status, and local CPU/RAM/disk usage.
 - **System Metrics Display:** Implemented for the expanded idle view using local Win32 interop and managed APIs: battery via `GetSystemPowerStatus`, CPU via `GetSystemTimes`, RAM via `GlobalMemoryStatusEx`, and disk via `DriveInfo`. CPU/RAM/disk/battery visibility is configurable through the persisted settings. No network, weather, or internet integration is included.
-- **Quick File Drop Zone:** Drag files or folders onto the notch to open a compact shelf with Open, Show in Explorer, Copy path, Open all, and Clear actions. The list is session-only and is capped for safety.
+- **Quick File Drop Zone:** Drag files or folders onto the notch to open a compact staging shelf with Open, Show in Explorer, Copy path, Open all, and Clear actions. Dropping more files adds them to the same shelf. The list is session-only and is capped for safety.
 - **Settings Window:** Toggle CPU/RAM/disk/battery metrics and Windows autostart. Changes are saved immediately to `settings.json`; autostart state is mirrored from the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry key.
 
 ### 2.3 System & Performance Constraints
