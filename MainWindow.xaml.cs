@@ -98,6 +98,17 @@ namespace WindowsNotch
         private static readonly SolidColorBrush DangerBrush = FrozenBrush(0xFF, 0x45, 0x3A);
         private static readonly SolidColorBrush BatteryBrush = FrozenBrush(0x4C, 0xD9, 0x64);
 
+        private static readonly Color IdleAccent = Color.FromRgb(0x6C, 0x7B, 0xFF);
+        private static readonly Color DropAccent = Color.FromRgb(0x3D, 0x7E, 0xFF);
+        private static readonly Color UnknownSourceColor = Color.FromRgb(0x5A, 0x5A, 0x5E);
+
+        // Tepi yang menempel ke layar tetap hitam pekat; sisi luar memakai
+        // gradasi violet-biru dengan opacity sedikit lebih rendah.
+        private static readonly Color AttachedEdgeColor = Color.FromArgb(0xFF, 0x07, 0x07, 0x08);
+        private static readonly Color BaseMidColor = Color.FromArgb(0xFF, 0x08, 0x08, 0x0B);
+        private static readonly Color BaseTintColor = Color.FromArgb(0xF2, 0x0B, 0x09, 0x14);
+        private static readonly Color BaseOuterColor = Color.FromArgb(0xE6, 0x11, 0x0E, 0x22);
+
         private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
         private readonly DispatcherTimer _collapseTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
         private readonly DispatcherTimer _featureHoverTimer = new() { Interval = TimeSpan.FromMilliseconds(220) };
@@ -575,6 +586,7 @@ namespace WindowsNotch
             {
                 _systemStatus.Start();
                 UpdateVisualState();
+                UpdateAccent();
                 return;
             }
 
@@ -588,6 +600,7 @@ namespace WindowsNotch
             UpdatePlayPauseGlyph(info.IsPlaying);
 
             UpdateVisualState();
+            UpdateAccent();
 
             ProgressSlider.Maximum = Math.Max(1, info.Duration.TotalSeconds);
             if (!_isSeeking)
@@ -621,21 +634,211 @@ namespace WindowsNotch
             }
         }
 
-        // Ikon aplikasi sumber: warna khas per app + glyph not musik
+        // Ikon aplikasi sumber: logo platform bila dikenal, fallback ke glyph musik.
         private void ApplySourceApp(string aumid)
+        {
+            string? logoKey = TryGetSourceLogoKey(aumid);
+
+            if (logoKey != null && TryFindResource(logoKey) is ImageSource logo)
+            {
+                SourceAppLogo.Source = logo;
+                SourceAppLogo.Visibility = Visibility.Visible;
+                SourceAppGlyph.Visibility = Visibility.Collapsed;
+                SourceAppIcon.Background = Brushes.Transparent;
+                return;
+            }
+
+            Color color = TryGetSourceColor(aumid, out var sourceColor)
+                ? sourceColor
+                : UnknownSourceColor;
+
+            SourceAppLogo.Source = null;
+            SourceAppLogo.Visibility = Visibility.Collapsed;
+            SourceAppGlyph.Visibility = Visibility.Visible;
+            SourceAppIcon.Background = FrozenBrush(color);
+        }
+
+        private static string? TryGetSourceLogoKey(string aumid)
         {
             var id = (aumid ?? string.Empty).ToLowerInvariant();
 
-            Color color =
-                id.Contains("spotify") ? Color.FromRgb(0x1D, 0xB9, 0x54) :
-                id.Contains("chrome") ? Color.FromRgb(0x42, 0x85, 0xF4) :
-                id.Contains("msedge") || id.Contains("edge") ? Color.FromRgb(0x00, 0x78, 0xD4) :
-                id.Contains("firefox") ? Color.FromRgb(0xFF, 0x71, 0x39) :
-                id.Contains("youtube") ? Color.FromRgb(0xFF, 0x00, 0x00) :
-                id.Contains("foobar") ? Color.FromRgb(0x2B, 0x2B, 0x2B) :
-                Color.FromRgb(0x5A, 0x5A, 0x5E);
+            if (id.Contains("spotify")) return "SpotifyLogoImage";
+            if (id.Contains("chrome")) return "ChromeLogoImage";
+            if (id.Contains("youtube")) return "YouTubeLogoImage";
 
-            SourceAppIcon.Background = new SolidColorBrush(color);
+            return null;
+        }
+
+        private static bool TryGetSourceColor(string aumid, out Color color)
+        {
+            var id = (aumid ?? string.Empty).ToLowerInvariant();
+
+            if (id.Contains("spotify"))
+            {
+                color = Color.FromRgb(0x1D, 0xB9, 0x54);
+                return true;
+            }
+
+            if (id.Contains("chrome"))
+            {
+                color = Color.FromRgb(0x42, 0x85, 0xF4);
+                return true;
+            }
+
+            if (id.Contains("msedge") || id.Contains("edge"))
+            {
+                color = Color.FromRgb(0x00, 0x78, 0xD4);
+                return true;
+            }
+
+            if (id.Contains("firefox"))
+            {
+                color = Color.FromRgb(0xFF, 0x71, 0x39);
+                return true;
+            }
+
+            if (id.Contains("youtube"))
+            {
+                color = Color.FromRgb(0xFF, 0x00, 0x00);
+                return true;
+            }
+
+            if (id.Contains("foobar"))
+            {
+                color = Color.FromRgb(0x2B, 0x2B, 0x2B);
+                return true;
+            }
+
+            color = UnknownSourceColor;
+            return false;
+        }
+
+        // Warna aksen mengikuti state: drop > media > idle.
+        private void UpdateAccent()
+        {
+            Color accent = _isFileDragOver
+                ? DropAccent
+                : _media == null
+                    ? IdleAccent
+                    : TryGetSourceColor(_media.SourceAppId, out var sourceColor)
+                        ? sourceColor
+                        : IdleAccent;
+
+            NotchAccent.Fill = CreateAccentBrush(accent);
+        }
+
+        // Arah gradasi mengikuti sisi yang menempel ke layar.
+        private void UpdateSurface()
+        {
+            NotchShape.Fill = CreateBaseBrush();
+            NotchSheen.Fill = CreateSheenBrush();
+
+            Brush attachedEdgeMask = CreateAttachedEdgeMask();
+            NotchOuterBorder.OpacityMask = attachedEdgeMask;
+            NotchBorder.OpacityMask = attachedEdgeMask;
+        }
+
+        private Brush CreateBaseBrush()
+        {
+            (Point start, Point end) = _anchor switch
+            {
+                NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
+                NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
+                _ => (new Point(0, 0), new Point(0, 1))
+            };
+
+            var brush = new LinearGradientBrush
+            {
+                StartPoint = start,
+                EndPoint = end
+            };
+
+            brush.GradientStops.Add(new GradientStop(AttachedEdgeColor, 0));
+            brush.GradientStops.Add(new GradientStop(BaseMidColor, 0.45));
+            brush.GradientStops.Add(new GradientStop(BaseTintColor, 0.75));
+            brush.GradientStops.Add(new GradientStop(BaseOuterColor, 1));
+
+            brush.Freeze();
+            return brush;
+        }
+
+        private Brush CreateSheenBrush()
+        {
+            (Point start, Point end) = _anchor switch
+            {
+                NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
+                NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
+                _ => (new Point(0, 0), new Point(0, 1))
+            };
+
+            var brush = new LinearGradientBrush
+            {
+                StartPoint = start,
+                EndPoint = end
+            };
+
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 255, 255, 255), 0));
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 255, 255, 255), 0.55));
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x06, 255, 255, 255), 1));
+
+            brush.Freeze();
+            return brush;
+        }
+
+        // Menghilangkan stroke tepat di sisi yang menempel ke layar.
+        private Brush CreateAttachedEdgeMask()
+        {
+            (Point start, Point end) = _anchor switch
+            {
+                NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
+                NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
+                _ => (new Point(0, 0), new Point(0, 1))
+            };
+
+            var brush = new LinearGradientBrush
+            {
+                StartPoint = start,
+                EndPoint = end
+            };
+
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 255, 255, 255), 0));
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 255, 255, 255), 0.03));
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0xFF, 255, 255, 255), 0.12));
+            brush.GradientStops.Add(new GradientStop(Color.FromArgb(0xFF, 255, 255, 255), 1));
+
+            brush.Freeze();
+            return brush;
+        }
+
+        private Brush CreateAccentBrush(Color accent)
+        {
+            Point center = _anchor switch
+            {
+                NotchAnchor.LeftCenter => new Point(1, 0.5),
+                NotchAnchor.RightCenter => new Point(0, 0.5),
+                _ => new Point(0.82, 0.5)
+            };
+
+            var brush = new RadialGradientBrush
+            {
+                Center = center,
+                GradientOrigin = center,
+                RadiusX = IsSideAnchor ? 0.95 : 0.72,
+                RadiusY = 0.95,
+                MappingMode = BrushMappingMode.RelativeToBoundingBox
+            };
+
+            brush.GradientStops.Add(new GradientStop(
+                Color.FromArgb(0x38, accent.R, accent.G, accent.B), 0));
+            brush.GradientStops.Add(new GradientStop(
+                Color.FromArgb(0x1C, accent.R, accent.G, accent.B), 0.45));
+            brush.GradientStops.Add(new GradientStop(
+                Color.FromArgb(0x08, accent.R, accent.G, accent.B), 0.75));
+            brush.GradientStops.Add(new GradientStop(
+                Color.FromArgb(0x00, accent.R, accent.G, accent.B), 1));
+
+            brush.Freeze();
+            return brush;
         }
 
         private void UpdatePlayPauseGlyph(bool isPlaying)
@@ -712,11 +915,11 @@ namespace WindowsNotch
                 if (IsSideAnchor)
                 {
                     double r = Math.Min(SideCornerRadius, Math.Min(w, h) / 2);
-                    ctx.BeginFigure(new Point(0, 0), isFilled: true, isClosed: true);
 
                     if (_anchor == NotchAnchor.LeftCenter)
                     {
                         // Menempel kiri: sudut kanan membulat
+                        ctx.BeginFigure(new Point(0, 0), isFilled: true, isClosed: true);
                         ctx.LineTo(new Point(w - r, 0), true, false);
                         ctx.ArcTo(new Point(w, r), new Size(r, r), 0, false,
                                   SweepDirection.Clockwise, true, false);
@@ -727,7 +930,10 @@ namespace WindowsNotch
                     }
                     else
                     {
-                        // Menempel kanan: sudut kiri membulat
+                        // Menempel kanan: sudut kiri membulat. Mulai dari ujung
+                        // lengkung, bukan (0,0), agar tidak ada garis penutup
+                        // yang menyeberangi sudut kiri.
+                        ctx.BeginFigure(new Point(r, 0), isFilled: true, isClosed: true);
                         ctx.LineTo(new Point(w, 0), true, false);
                         ctx.LineTo(new Point(w, h), true, false);
                         ctx.LineTo(new Point(r, h), true, false);
@@ -796,7 +1002,9 @@ namespace WindowsNotch
             SetWindowSize(w, h);
             UpdateFeatureButtonPosition(w, h);
             UpdateNotchShape(new Size(w, h));
+            UpdateSurface();
             UpdateVisualState();
+            UpdateAccent();
         }
 
         private void UpdateContentMargin()
@@ -1137,6 +1345,7 @@ namespace WindowsNotch
             _collapseTimer.Stop();
             DropIndicator.Visibility = Visibility.Visible;
             ExpandNotch();
+            UpdateAccent();
 
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
@@ -1155,6 +1364,7 @@ namespace WindowsNotch
                 _isFileDragOver = true;
                 _collapseTimer.Stop();
                 DropIndicator.Visibility = Visibility.Visible;
+                UpdateAccent();
             }
 
             ExpandNotch();
@@ -1169,6 +1379,7 @@ namespace WindowsNotch
 
             _isFileDragOver = false;
             DropIndicator.Visibility = Visibility.Collapsed;
+            UpdateAccent();
 
             if (IsAuxOpen || _isDragging) return;
             if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
@@ -1187,6 +1398,7 @@ namespace WindowsNotch
 
             _isFileDragOver = false;
             DropIndicator.Visibility = Visibility.Collapsed;
+            UpdateAccent();
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
 
@@ -1372,7 +1584,12 @@ namespace WindowsNotch
 
         private static SolidColorBrush FrozenBrush(byte r, byte g, byte b)
         {
-            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            return FrozenBrush(Color.FromRgb(r, g, b));
+        }
+
+        private static SolidColorBrush FrozenBrush(Color color)
+        {
+            var brush = new SolidColorBrush(color);
             brush.Freeze();
             return brush;
         }

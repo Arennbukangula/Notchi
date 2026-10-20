@@ -12,6 +12,124 @@
         WindowStartupLocation="Manual">
 
     <Window.Resources>
+        <!-- Obsidian Glass: hitam tetap dominan, dengan tepi dan glow tipis -->
+        <LinearGradientBrush x:Key="NotchBaseBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#FF070708" Offset="0"/>
+            <GradientStop Color="#FF08080B" Offset="0.45"/>
+            <GradientStop Color="#F20B0914" Offset="0.75"/>
+            <GradientStop Color="#E6110E22" Offset="1"/>
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="NotchSheenBrush" StartPoint="0,1" EndPoint="0,0">
+            <GradientStop Color="#06FFFFFF" Offset="0"/>
+            <GradientStop Color="#00FFFFFF" Offset="0.5"/>
+            <GradientStop Color="#00FFFFFF" Offset="1"/>
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="NotchHairlineBrush" Color="#40FFFFFF"/>
+        <SolidColorBrush x:Key="NotchOuterBorderBrush" Color="#66000000"/>
+        <SolidColorBrush x:Key="DividerBrush" Color="#D9FFFFFF"/>
+
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F7F7FA"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B8B8BF"/>
+        <SolidColorBrush x:Key="TextSoftBrush" Color="#D0D0D6"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#85858D"/>
+
+        <!-- Progress media: gradasi biru muda ke biru tua, tanpa ungu -->
+        <LinearGradientBrush x:Key="MediaProgressBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#EAF7FF" Offset="0"/>
+            <GradientStop Color="#8FD3FF" Offset="0.35"/>
+            <GradientStop Color="#4A90FF" Offset="0.7"/>
+            <GradientStop Color="#1D4ED8" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- Logo platform media, digambar sebagai vektor agar tetap tajam -->
+        <DrawingImage x:Key="SpotifyLogoImage">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#1DB954">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="12,12" RadiusX="12" RadiusY="12"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing>
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="#0B0B0B" Thickness="2.1"
+                                 StartLineCap="Round" EndLineCap="Round"/>
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <PathGeometry Figures="M5.2,8.2 C9.1,6.7 15,7.0 18.8,9.0"/>
+                                <PathGeometry Figures="M5.8,11.8 C9.2,10.6 14.2,10.8 17.4,12.4"/>
+                                <PathGeometry Figures="M6.4,15.2 C9.4,14.3 13.2,14.5 15.9,15.8"/>
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <DrawingImage x:Key="ChromeLogoImage">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#EA4335">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry Figures="M12,12 L2.474,6.5 A11,11 0 0 1 21.526,6.5 Z"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#34A853">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry Figures="M12,12 L12,23 A11,11 0 0 1 2.474,6.5 Z"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#FBBC05">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry Figures="M12,12 L21.526,6.5 A11,11 0 0 1 12,23 Z"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing>
+                        <GeometryDrawing.Pen>
+                            <Pen Brush="White" Thickness="1.2"/>
+                        </GeometryDrawing.Pen>
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <LineGeometry StartPoint="12,12" EndPoint="2.474,6.5"/>
+                                <LineGeometry StartPoint="12,12" EndPoint="21.526,6.5"/>
+                                <LineGeometry StartPoint="12,12" EndPoint="12,23"/>
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="12,12" RadiusX="5.4" RadiusY="5.4"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#4285F4">
+                        <GeometryDrawing.Geometry>
+                            <EllipseGeometry Center="12,12" RadiusX="4.4" RadiusY="4.4"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
+        <DrawingImage x:Key="YouTubeLogoImage">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#FF0000">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="1,4.5,22,15" RadiusX="4" RadiusY="4"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry Figures="M10,8.2 L16.4,12 L10,15.8 Z"/>
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
         <!-- Tombol ikon tanpa chrome, dengan efek hover -->
         <Style x:Key="IconButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -53,7 +171,8 @@
                                     <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Focusable="False">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="2" Background="#3D7EFF"/>
+                                                <Border Height="4" CornerRadius="2"
+                                                        Background="{StaticResource MediaProgressBrush}"/>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
@@ -172,7 +291,17 @@
               HorizontalAlignment="Center" VerticalAlignment="Top" Cursor="Hand"
               AllowDrop="True">
             <!-- Shape pill: tepi atas flare keluar, bawah radius normal -->
-            <Path x:Name="NotchShape" Fill="Black"/>
+            <Path x:Name="NotchShape" Fill="{StaticResource NotchBaseBrush}"/>
+            <Path x:Name="NotchAccent" Data="{Binding Data, ElementName=NotchShape}"
+                  Fill="Transparent" IsHitTestVisible="False"/>
+            <Path x:Name="NotchSheen" Data="{Binding Data, ElementName=NotchShape}"
+                  Fill="{StaticResource NotchSheenBrush}" IsHitTestVisible="False"/>
+            <Path x:Name="NotchOuterBorder" Data="{Binding Data, ElementName=NotchShape}"
+                  Fill="Transparent" Stroke="{StaticResource NotchOuterBorderBrush}"
+                  StrokeThickness="2" IsHitTestVisible="False"/>
+            <Path x:Name="NotchBorder" Data="{Binding Data, ElementName=NotchShape}"
+                  Fill="Transparent" Stroke="{StaticResource NotchHairlineBrush}"
+                  StrokeThickness="1.2" IsHitTestVisible="False"/>
 
         <Grid x:Name="ContentRoot" Margin="16,0">
             <!-- State 1: Idle dashboard (saat tidak ada sesi media) -->
@@ -183,7 +312,11 @@
                     <TextBlock x:Name="CompactClockText" Text="08:42" Foreground="White"
                                FontSize="15" FontWeight="SemiBold" LineHeight="17"
                                HorizontalAlignment="Center"/>
-                    <TextBlock x:Name="CompactDateText" Text="Sen, 19 Okt" Foreground="#9A9A9E"
+                    <Border x:Name="CompactAccentLine" Width="12" Height="0.75"
+                            Margin="0,2,0,2" CornerRadius="0.5"
+                            Background="{StaticResource DividerBrush}"
+                            HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="CompactDateText" Text="Sen, 19 Okt" Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="9" LineHeight="10" HorizontalAlignment="Center"/>
                 </StackPanel>
 
@@ -198,7 +331,7 @@
                         <TextBlock x:Name="ExpandedClockText" Text="08:42" Foreground="White"
                                    FontSize="26" FontWeight="SemiBold" LineHeight="28"/>
                         <TextBlock x:Name="ExpandedDateText" Text="Senin, 19 Okt 2026"
-                                   Foreground="#9A9A9E" FontSize="9" LineHeight="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="9" LineHeight="11"
                                    TextTrimming="CharacterEllipsis"/>
                         <StackPanel x:Name="ExpandedBatteryPanel" Orientation="Horizontal"
                                     Margin="0,10,0,0">
@@ -212,7 +345,7 @@
                             </Border>
                             <Border Width="2" Height="4" Background="#C8C8CC" CornerRadius="1"
                                     Margin="1,0,0,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ExpandedBatteryText" Text="82%" Foreground="#C8C8CC"
+                            <TextBlock x:Name="ExpandedBatteryText" Text="82%" Foreground="{StaticResource TextSoftBrush}"
                                        FontSize="8.5" Margin="4,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
@@ -230,13 +363,13 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="32"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="CPU" Foreground="#9A9A9E" FontSize="8"
+                            <TextBlock Text="CPU" Foreground="{StaticResource TextSecondaryBrush}" FontSize="8"
                                        VerticalAlignment="Center"/>
                             <ProgressBar x:Name="ExpandedCpuBar" Grid.Column="1"
                                          Style="{StaticResource MetricBar}"
                                          Margin="6,0" VerticalAlignment="Center"/>
                             <TextBlock x:Name="ExpandedCpuText" Grid.Column="2" Text="--%"
-                                       Foreground="#C8C8CC" FontSize="8.5"
+                                       Foreground="{StaticResource TextSoftBrush}" FontSize="8.5"
                                        TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
 
@@ -246,13 +379,13 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="32"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="RAM" Foreground="#9A9A9E" FontSize="8"
+                            <TextBlock Text="RAM" Foreground="{StaticResource TextSecondaryBrush}" FontSize="8"
                                        VerticalAlignment="Center"/>
                             <ProgressBar x:Name="ExpandedRamBar" Grid.Column="1"
                                          Style="{StaticResource MetricBar}"
                                          Margin="6,0" VerticalAlignment="Center"/>
                             <TextBlock x:Name="ExpandedRamText" Grid.Column="2" Text="--%"
-                                       Foreground="#C8C8CC" FontSize="8.5"
+                                       Foreground="{StaticResource TextSoftBrush}" FontSize="8.5"
                                        TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
 
@@ -262,13 +395,13 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="32"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="ExpandedDiskLabel" Text="C:" Foreground="#9A9A9E"
+                            <TextBlock x:Name="ExpandedDiskLabel" Text="C:" Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="8" VerticalAlignment="Center"/>
                             <ProgressBar x:Name="ExpandedDiskBar" Grid.Column="1"
                                          Style="{StaticResource MetricBar}"
                                          Margin="6,0" VerticalAlignment="Center"/>
                             <TextBlock x:Name="ExpandedDiskText" Grid.Column="2" Text="--%"
-                                       Foreground="#C8C8CC" FontSize="8.5"
+                                       Foreground="{StaticResource TextSoftBrush}" FontSize="8.5"
                                        TextAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
 
@@ -283,7 +416,7 @@
                         CornerRadius="6" Background="#2B2B2B">
                     <Grid>
                         <TextBlock x:Name="SideAlbumArtPlaceholder" Text="&#x266A;" FontSize="12"
-                                   Foreground="#8A8A8A" HorizontalAlignment="Center"
+                                   Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                         <Image x:Name="SideAlbumArt" Stretch="UniformToFill" Visibility="Collapsed">
                             <Image.Clip>
@@ -311,10 +444,12 @@
                 <TextBlock x:Name="SideMinuteText" Text="42" Foreground="White"
                            FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"
                            LineHeight="13" Margin="0,-1,0,0"/>
-                <Border Width="20" Height="1" Background="#2F2F2F" Margin="0,6,0,0"/>
-                <TextBlock x:Name="SideDayText" Text="Sen" Foreground="#9A9A9E"
+                <Border x:Name="SideDivider" Width="16" Height="0.75"
+                        Background="{StaticResource DividerBrush}" CornerRadius="0.5"
+                        Margin="0,6,0,0"/>
+                <TextBlock x:Name="SideDayText" Text="Sen" Foreground="{StaticResource TextSecondaryBrush}"
                            FontSize="8" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                <TextBlock x:Name="SideDateText" Text="19 Okt" Foreground="#C8C8CC"
+                <TextBlock x:Name="SideDateText" Text="19 Okt" Foreground="{StaticResource TextSoftBrush}"
                            FontSize="8" HorizontalAlignment="Center" Margin="0,1,0,0"/>
             </StackPanel>
 
@@ -339,7 +474,7 @@
                             VerticalAlignment="Center">
                         <Grid>
                             <TextBlock x:Name="AlbumArtPlaceholder" Text="&#x266A;" FontSize="12"
-                                       Foreground="#8A8A8A" HorizontalAlignment="Center"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                             <Image x:Name="AlbumArt" Stretch="UniformToFill" Visibility="Collapsed">
                                 <Image.Clip>
@@ -354,7 +489,7 @@
                         <TextBlock x:Name="TrackTitle" Text="Everything You Are" Foreground="White"
                                    FontSize="12" FontWeight="SemiBold" LineHeight="15"
                                    TextTrimming="CharacterEllipsis"/>
-                        <TextBlock x:Name="TrackArtist" Text="Hindia" Foreground="#9A9A9E"
+                        <TextBlock x:Name="TrackArtist" Text="Hindia" Foreground="{StaticResource TextSecondaryBrush}"
                                    FontSize="10" LineHeight="12" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
 
@@ -372,9 +507,13 @@
                     <Border x:Name="SourceAppIcon" Grid.Column="2" Width="20" Height="20"
                             CornerRadius="10" Background="#1DB954" VerticalAlignment="Center"
                             Visibility="Collapsed">
-                        <TextBlock x:Name="SourceAppGlyph" Text="&#x266A;" FontSize="11"
-                                   Foreground="White" HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                        <Grid>
+                            <Image x:Name="SourceAppLogo" Width="20" Height="20"
+                                   Stretch="Uniform" Visibility="Collapsed"/>
+                            <TextBlock x:Name="SourceAppGlyph" Text="&#x266A;" FontSize="11"
+                                       Foreground="White" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
                     </Border>
                 </Grid>
 
@@ -385,13 +524,13 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="PositionText" Text="0:11" Foreground="#9A9A9E"
+                    <TextBlock x:Name="PositionText" Text="0:11" Foreground="{StaticResource TextSecondaryBrush}"
                                FontSize="9.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Slider x:Name="ProgressSlider" Grid.Column="1" Style="{StaticResource SlimSlider}"
                             Minimum="0" Maximum="213" Value="11" Height="12"
                             VerticalAlignment="Center"/>
                     <TextBlock x:Name="DurationText" Grid.Column="2" Text="-3:22"
-                               Foreground="#9A9A9E" FontSize="9.5"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="9.5"
                                VerticalAlignment="Center" Margin="8,0,0,0"/>
                 </Grid>
 
@@ -432,7 +571,7 @@
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           StrokeLineJoin="Round" Fill="Transparent"/>
                 </Viewbox>
-                <TextBlock Text="Lepaskan file di sini" Foreground="#F5F5F7"
+                <TextBlock Text="Lepaskan file di sini" Foreground="{StaticResource TextPrimaryBrush}"
                            FontSize="10" FontWeight="SemiBold"
                            VerticalAlignment="Center"/>
             </StackPanel>
@@ -479,7 +618,7 @@
                                       StrokeLineJoin="Round" Fill="Transparent"/>
                             </Viewbox>
                             <TextBlock x:Name="FileMenuLabel" Grid.Column="1" Text="File"
-                                       Foreground="#F5F5F7" FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}" FontSize="11.5"
                                        FontWeight="SemiBold" Margin="8,0,0,0"
                                        VerticalAlignment="Center"/>
                         </Grid>
@@ -499,7 +638,7 @@
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                       StrokeLineJoin="Round" Fill="Transparent"/>
                             </Viewbox>
-                            <TextBlock Grid.Column="1" Text="Catatan" Foreground="#F5F5F7"
+                            <TextBlock Grid.Column="1" Text="Catatan" Foreground="{StaticResource TextPrimaryBrush}"
                                        FontSize="11.5" FontWeight="SemiBold"
                                        Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </Grid>
@@ -518,7 +657,7 @@
                                       Stroke="#F5F5F7" StrokeThickness="1.3"
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                             </Viewbox>
-                            <TextBlock Grid.Column="1" Text="Pengaturan" Foreground="#F5F5F7"
+                            <TextBlock Grid.Column="1" Text="Pengaturan" Foreground="{StaticResource TextPrimaryBrush}"
                                        FontSize="11.5" FontWeight="SemiBold"
                                        Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </Grid>
@@ -538,7 +677,7 @@
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                       Fill="Transparent"/>
                             </Viewbox>
-                            <TextBlock Grid.Column="1" Text="Keluar" Foreground="#F5F5F7"
+                            <TextBlock Grid.Column="1" Text="Keluar" Foreground="{StaticResource TextPrimaryBrush}"
                                        FontSize="11.5" FontWeight="SemiBold"
                                        Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </Grid>
