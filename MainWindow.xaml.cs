@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -115,6 +116,7 @@ namespace WindowsNotch
         private NoteWindow? _noteWindow;
         private SettingsWindow? _settingsWindow;
         private DropShelfWindow? _dropShelf;
+        private readonly List<string> _droppedPaths = new();
         private int _animationVersion;
         private Point _dragStartCursor;
         private Point _dragGrab;
@@ -235,6 +237,7 @@ namespace WindowsNotch
 
             FeaturePopup.Opened += OnFeaturePopupOpened;
             FeaturePopup.Closed += OnFeaturePopupClosed;
+            FileButton.Click += OnFileButtonClick;
             NoteButton.Click += OnNoteButtonClick;
             SettingsButton.Click += OnSettingsButtonClick;
             ExitButton.Click += (s, e) => Application.Current.Shutdown();
@@ -415,6 +418,13 @@ namespace WindowsNotch
 
             _collapseTimer.Stop();
             CollapseNotch();
+        }
+
+        private void OnFileButtonClick(object sender, RoutedEventArgs e)
+        {
+            _keepNotchOpenForAux = true;
+            FeaturePopup.IsOpen = false;
+            ShowFileShelf();
         }
 
         private void OnNoteButtonClick(object sender, RoutedEventArgs e)
@@ -1203,6 +1213,17 @@ namespace WindowsNotch
             return true;
         }
 
+        private void ShowFileShelf()
+        {
+            if (_dropShelf is { IsVisible: true })
+            {
+                _dropShelf.Activate();
+                return;
+            }
+
+            CreateDropShelf(_droppedPaths);
+        }
+
         private void ShowDropShelf(string[] paths)
         {
             string[] validPaths = paths
@@ -1211,17 +1232,37 @@ namespace WindowsNotch
 
             if (validPaths.Length == 0) return;
 
+            foreach (string path in validPaths)
+            {
+                if (_droppedPaths.Count >= DropShelfWindow.MaxItems) break;
+                if (_droppedPaths.Any(existing =>
+                        string.Equals(existing, path,
+                            StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                _droppedPaths.Add(path);
+            }
+
             if (_dropShelf is { IsVisible: true })
             {
                 _dropShelf.AddPaths(validPaths);
+                SyncDroppedPathsFromShelf(_dropShelf);
                 PositionAuxWindow(_dropShelf);
                 _dropShelf.Activate();
                 return;
             }
 
-            var shelf = new DropShelfWindow(validPaths);
+            CreateDropShelf(_droppedPaths);
+        }
+
+        private void CreateDropShelf(IEnumerable<string> paths)
+        {
+            var shelf = new DropShelfWindow(paths);
             PositionAuxWindow(shelf);
 
+            shelf.ItemsChanged += (s, e) => SyncDroppedPathsFromShelf(shelf);
             shelf.Closed += (s, e) =>
             {
                 _dropShelf = null;
@@ -1235,6 +1276,22 @@ namespace WindowsNotch
             _dropShelf = shelf;
             shelf.Show();
             shelf.Activate();
+            SyncDroppedPathsFromShelf(shelf);
+        }
+
+        private void SyncDroppedPathsFromShelf(DropShelfWindow shelf)
+        {
+            _droppedPaths.Clear();
+            _droppedPaths.AddRange(shelf.Paths);
+            UpdateFileMenuLabel();
+        }
+
+        private void UpdateFileMenuLabel()
+        {
+            FileButton.IsEnabled = _droppedPaths.Count > 0;
+            FileMenuLabel.Text = _droppedPaths.Count > 0
+                ? $"File ({_droppedPaths.Count})"
+                : "File";
         }
 
         private void SaveAnchor()

@@ -17,7 +17,7 @@ namespace WindowsNotch
 
     public partial class DropShelfWindow : Window
     {
-        private const int MaxItems = 50;
+        public const int MaxItems = 50;
         private const int MaxOpenAllItems = 10;
 
         private static readonly Brush MutedBrush = FrozenBrush(0x6E, 0x6E, 0x73);
@@ -44,6 +44,11 @@ namespace WindowsNotch
             Loaded += (s, e) => Activate();
         }
 
+        public event EventHandler? ItemsChanged;
+
+        public IReadOnlyList<string> Paths =>
+            _items.Select(item => item.Path).ToList();
+
         public int AddPaths(IEnumerable<string> paths)
         {
             int added = 0;
@@ -66,6 +71,11 @@ namespace WindowsNotch
             if (added > 0 || _items.Count == 0)
             {
                 RefreshList();
+            }
+
+            if (added > 0)
+            {
+                ItemsChanged?.Invoke(this, EventArgs.Empty);
             }
 
             return added;
@@ -195,6 +205,7 @@ namespace WindowsNotch
             _items.Clear();
             RefreshList();
             SetStatus("", isError: false);
+            ItemsChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private static DroppedFileItem? GetItem(object sender)
