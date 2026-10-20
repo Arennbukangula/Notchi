@@ -648,9 +648,7 @@ namespace WindowsNotch
                 return;
             }
 
-            Color color = TryGetSourceColor(aumid, out var sourceColor)
-                ? sourceColor
-                : UnknownSourceColor;
+            Color color = GetSourceColor(aumid) ?? UnknownSourceColor;
 
             SourceAppLogo.Source = null;
             SourceAppLogo.Visibility = Visibility.Collapsed;
@@ -669,48 +667,18 @@ namespace WindowsNotch
             return null;
         }
 
-        private static bool TryGetSourceColor(string aumid, out Color color)
+        private static Color? GetSourceColor(string aumid)
         {
             var id = (aumid ?? string.Empty).ToLowerInvariant();
 
-            if (id.Contains("spotify"))
-            {
-                color = Color.FromRgb(0x1D, 0xB9, 0x54);
-                return true;
-            }
+            if (id.Contains("spotify")) return Color.FromRgb(0x1D, 0xB9, 0x54);
+            if (id.Contains("chrome")) return Color.FromRgb(0x42, 0x85, 0xF4);
+            if (id.Contains("msedge") || id.Contains("edge")) return Color.FromRgb(0x00, 0x78, 0xD4);
+            if (id.Contains("firefox")) return Color.FromRgb(0xFF, 0x71, 0x39);
+            if (id.Contains("youtube")) return Color.FromRgb(0xFF, 0x00, 0x00);
+            if (id.Contains("foobar")) return Color.FromRgb(0x2B, 0x2B, 0x2B);
 
-            if (id.Contains("chrome"))
-            {
-                color = Color.FromRgb(0x42, 0x85, 0xF4);
-                return true;
-            }
-
-            if (id.Contains("msedge") || id.Contains("edge"))
-            {
-                color = Color.FromRgb(0x00, 0x78, 0xD4);
-                return true;
-            }
-
-            if (id.Contains("firefox"))
-            {
-                color = Color.FromRgb(0xFF, 0x71, 0x39);
-                return true;
-            }
-
-            if (id.Contains("youtube"))
-            {
-                color = Color.FromRgb(0xFF, 0x00, 0x00);
-                return true;
-            }
-
-            if (id.Contains("foobar"))
-            {
-                color = Color.FromRgb(0x2B, 0x2B, 0x2B);
-                return true;
-            }
-
-            color = UnknownSourceColor;
-            return false;
+            return null;
         }
 
         // Warna aksen mengikuti state: drop > media > idle.
@@ -720,9 +688,7 @@ namespace WindowsNotch
                 ? DropAccent
                 : _media == null
                     ? IdleAccent
-                    : TryGetSourceColor(_media.SourceAppId, out var sourceColor)
-                        ? sourceColor
-                        : IdleAccent;
+                    : GetSourceColor(_media.SourceAppId) ?? IdleAccent;
 
             NotchAccent.Fill = CreateAccentBrush(accent);
         }
@@ -738,14 +704,16 @@ namespace WindowsNotch
             NotchBorder.OpacityMask = attachedEdgeMask;
         }
 
+        private (Point Start, Point End) EdgeGradientPoints => _anchor switch
+        {
+            NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
+            NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
+            _ => (new Point(0, 0), new Point(0, 1))
+        };
+
         private Brush CreateBaseBrush()
         {
-            (Point start, Point end) = _anchor switch
-            {
-                NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
-                NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
-                _ => (new Point(0, 0), new Point(0, 1))
-            };
+            (Point start, Point end) = EdgeGradientPoints;
 
             var brush = new LinearGradientBrush
             {
@@ -764,12 +732,7 @@ namespace WindowsNotch
 
         private Brush CreateSheenBrush()
         {
-            (Point start, Point end) = _anchor switch
-            {
-                NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
-                NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
-                _ => (new Point(0, 0), new Point(0, 1))
-            };
+            (Point start, Point end) = EdgeGradientPoints;
 
             var brush = new LinearGradientBrush
             {
@@ -788,12 +751,7 @@ namespace WindowsNotch
         // Menghilangkan stroke tepat di sisi yang menempel ke layar.
         private Brush CreateAttachedEdgeMask()
         {
-            (Point start, Point end) = _anchor switch
-            {
-                NotchAnchor.LeftCenter => (new Point(0, 0.5), new Point(1, 0.5)),
-                NotchAnchor.RightCenter => (new Point(1, 0.5), new Point(0, 0.5)),
-                _ => (new Point(0, 0), new Point(0, 1))
-            };
+            (Point start, Point end) = EdgeGradientPoints;
 
             var brush = new LinearGradientBrush
             {
