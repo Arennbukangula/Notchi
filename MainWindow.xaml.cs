@@ -114,6 +114,8 @@ namespace WindowsNotch
         private bool _dragMoved;
         private bool _featurePanelOpen;
         private long _featurePanelClosedAt;
+        private bool _keepNotchOpenForNote;
+        private NoteWindow? _noteWindow;
         private int _animationVersion;
         private Point _dragStartCursor;
         private Point _dragGrab;
@@ -137,6 +139,7 @@ namespace WindowsNotch
         }
 
         private bool IsSideAnchor => _anchor is NotchAnchor.LeftCenter or NotchAnchor.RightCenter;
+        private bool IsNoteOpen => _noteWindow is { IsVisible: true };
 
         private (double Width, double Height) CollapsedSize => IsSideAnchor
             ? (SideCollapsedWidth, SideCollapsedHeight)
@@ -170,20 +173,20 @@ namespace WindowsNotch
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen) return;
+                if (_isDragging || _featurePanelOpen || IsNoteOpen) return;
                 _collapseTimer.Stop();
                 ExpandNotch();
             };
             PillHost.MouseLeave += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen) return;
+                if (_isDragging || _featurePanelOpen || IsNoteOpen) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
             _collapseTimer.Tick += (s, e) =>
             {
                 _collapseTimer.Stop();
-                if (!_isDragging && !_featurePanelOpen) CollapseNotch();
+                if (!_isDragging && !_featurePanelOpen && !IsNoteOpen) CollapseNotch();
             };
             PillHost.MouseRightButtonDown += (s, e) => Application.Current.Shutdown();
 
@@ -191,13 +194,14 @@ namespace WindowsNotch
             FeatureButton.MouseEnter += (s, e) => _collapseTimer.Stop();
             FeatureButton.MouseLeave += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen) return;
+                if (_isDragging || _featurePanelOpen || IsNoteOpen) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
             FeatureButton.Click += OnFeatureButtonClick;
             FeaturePopup.Opened += OnFeaturePopupOpened;
             FeaturePopup.Closed += OnFeaturePopupClosed;
+            NoteButton.Click += OnNoteButtonClick;
             ExitButton.Click += (s, e) => Application.Current.Shutdown();
 
             // Drag & drop: geser notch ke salah satu titik snap
@@ -342,11 +346,91 @@ namespace WindowsNotch
             FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty, null);
             FeaturePanelCard.Opacity = 1;
 
+            if (_keepNotchOpenForNote)
+            {
+                _keepNotchOpenForNote = false;
+                return;
+            }
+
+            if (IsNoteOpen) return;
             if (_isDragging) return;
             if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
 
             _collapseTimer.Stop();
             CollapseNotch();
+        }
+
+        private void OnNoteButtonClick(object sender, RoutedEventArgs e)
+        {
+            _keepNotchOpenForNote = true;
+            FeaturePopup.IsOpen = false;
+            ShowNoteWindow();
+        }
+
+        private void ShowNoteWindow()
+        {
+            if (_noteWindow is { IsVisible: true })
+            {
+                _noteWindow.Activate();
+                return;
+            }
+
+            var note = new NoteWindow();
+            PositionNoteWindow(note);
+
+            note.Closed += (s, e) =>
+            {
+                _noteWindow = null;
+
+                // Tombol X / Esc hanya menutup catatan dan kembali ke menu fitur,
+                // bukan ikut menutup atau men-collapse notch.
+                if (note.ClosedByUser && !IsSideAnchor)
+                {
+                    OpenFeaturePanel();
+                    return;
+                }
+
+                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+
+                _collapseTimer.Stop();
+                CollapseNotch();
+            };
+
+            _noteWindow = note;
+            note.Show();
+            note.Activate();
+        }
+
+        private void PositionNoteWindow(Window note)
+        {
+            const double gap = 8;
+
+            double left = Left + FeatureButton.Margin.Left + FeatureButton.ActualWidth + gap;
+            double top = Top + FeatureButton.Margin.Top;
+
+            var work = _monitor;
+            if (work.Width < 1 || work.Height < 1)
+            {
+                work = new Rect(0, 0,
+                    SystemParameters.PrimaryScreenWidth,
+                    SystemParameters.PrimaryScreenHeight);
+            }
+
+            // Kalau ruang di kanan tidak cukup, buka di kiri ikon.
+            if (left + note.Width > work.Right - gap)
+            {
+                left = Left + FeatureButton.Margin.Left - note.Width - gap;
+            }
+
+            left = Math.Clamp(left,
+                work.Left + gap,
+                Math.Max(work.Left + gap, work.Right - note.Width - gap));
+            top = Math.Clamp(top,
+                work.Top + gap,
+                Math.Max(work.Top + gap, work.Bottom - note.Height - gap));
+
+            note.Left = left;
+            note.Top = top;
         }
 
         private void OnMediaChanged(MediaInfo? info)
