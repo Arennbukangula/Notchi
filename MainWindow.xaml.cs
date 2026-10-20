@@ -3,7 +3,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -91,10 +90,6 @@ namespace WindowsNotch
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hwnd);
 
-        private static readonly string SettingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Notchi", "settings.json");
-
         private static readonly SolidColorBrush AccentBrush = FrozenBrush(0x3D, 0x7E, 0xFF);
         private static readonly SolidColorBrush WarningBrush = FrozenBrush(0xFF, 0xB0, 0x20);
         private static readonly SolidColorBrush DangerBrush = FrozenBrush(0xFF, 0x45, 0x3A);
@@ -106,15 +101,18 @@ namespace WindowsNotch
         private readonly DispatcherTimer _mediaTimer = new() { Interval = TimeSpan.FromSeconds(1) };
         private readonly SmtcService _smtc = new();
         private readonly SystemStatusService _systemStatus = new();
-        private Settings _settings = new();
+        private AppSettings _settings = new();
         private MediaInfo? _media;
         private bool _isSeeking;
         private bool _isExpanded;
         private bool _isDragging;
         private bool _dragMoved;
         private bool _featurePanelOpen;
-        private bool _keepNotchOpenForNote;
+        private bool _keepNotchOpenForAux;
+        private bool _isFileDragOver;
         private NoteWindow? _noteWindow;
+        private SettingsWindow? _settingsWindow;
+        private DropShelfWindow? _dropShelf;
         private int _animationVersion;
         private Point _dragStartCursor;
         private Point _dragGrab;
@@ -128,17 +126,11 @@ namespace WindowsNotch
             RightCenter
         }
 
-        private sealed class Settings
-        {
-            public string? Anchor { get; set; }
-            public bool ShowCpu { get; set; } = true;
-            public bool ShowRam { get; set; } = true;
-            public bool ShowDisk { get; set; } = true;
-            public bool ShowBattery { get; set; } = true;
-        }
-
         private bool IsSideAnchor => _anchor is NotchAnchor.LeftCenter or NotchAnchor.RightCenter;
         private bool IsNoteOpen => _noteWindow is { IsVisible: true };
+        private bool IsSettingsOpen => _settingsWindow is { IsVisible: true };
+        private bool IsShelfOpen => _dropShelf is { IsVisible: true };
+        private bool IsAuxOpen => IsNoteOpen || IsSettingsOpen || IsShelfOpen;
 
         private (double Width, double Height) CollapsedSize => IsSideAnchor
             ? (SideCollapsedWidth, SideCollapsedHeight)
@@ -152,7 +144,20 @@ namespace WindowsNotch
         {
             InitializeComponent();
 
-            _settings = LoadSettings();
+            _settings = SettingsStore.Load();
+
+            bool autoStartEnabled = StartupService.IsEnabled();
+            if (autoStartEnabled)
+            {
+                StartupService.RefreshPathIfEnabled();
+            }
+
+            if (_settings.AutoStart != autoStartEnabled)
+            {
+                _settings.AutoStart = autoStartEnabled;
+                SettingsStore.Save(_settings);
+            }
+
             _anchor = Enum.TryParse<NotchAnchor>(_settings.Anchor, out var anchor)
                 ? anchor
                 : NotchAnchor.TopCenter;
@@ -172,20 +177,24 @@ namespace WindowsNotch
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen || IsNoteOpen) return;
+                if (_isDragging || _featurePanelOpen || IsAuxOpen || _isFileDragOver) return;
                 _collapseTimer.Stop();
                 ExpandNotch();
             };
             PillHost.MouseLeave += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen || IsNoteOpen) return;
+                if (_isDragging || _featurePanelOpen || IsAuxOpen || _isFileDragOver) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
             _collapseTimer.Tick += (s, e) =>
             {
                 _collapseTimer.Stop();
-                if (!_isDragging && !_featurePanelOpen && !IsNoteOpen) CollapseNotch();
+                if (!_isDragging && !_featurePanelOpen && !IsAuxOpen &&
+                    !_isFileDragOver)
+                {
+                    CollapseNotch();
+                }
             };
             PillHost.MouseRightButtonDown += (s, e) => Application.Current.Shutdown();
 
@@ -217,7 +226,7 @@ namespace WindowsNotch
 
                 if (FeaturePopup.IsOpen) FeaturePopup.IsOpen = false;
 
-                if (_isDragging || IsNoteOpen) return;
+                if (_isDragging || IsAuxOpen || _isFileDragOver) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
@@ -225,7 +234,13 @@ namespace WindowsNotch
             FeaturePopup.Opened += OnFeaturePopupOpened;
             FeaturePopup.Closed += OnFeaturePopupClosed;
             NoteButton.Click += OnNoteButtonClick;
+            SettingsButton.Click += OnSettingsButtonClick;
             ExitButton.Click += (s, e) => Application.Current.Shutdown();
+
+            PillHost.DragEnter += OnPillDragEnter;
+            PillHost.DragOver += OnPillDragOver;
+            PillHost.DragLeave += OnPillDragLeave;
+            PillHost.Drop += OnPillDrop;
 
             // Drag & drop: geser notch ke salah satu titik snap
             PillHost.PreviewMouseLeftButtonDown += OnPillMouseDown;
@@ -386,14 +401,14 @@ namespace WindowsNotch
             FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty, null);
             FeaturePanelCard.Opacity = 1;
 
-            if (_keepNotchOpenForNote)
+            if (_keepNotchOpenForAux)
             {
-                _keepNotchOpenForNote = false;
+                _keepNotchOpenForAux = false;
                 return;
             }
 
-            if (IsNoteOpen) return;
-            if (_isDragging) return;
+            if (IsAuxOpen) return;
+            if (_isDragging || _isFileDragOver) return;
             if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
 
             _collapseTimer.Stop();
@@ -402,9 +417,16 @@ namespace WindowsNotch
 
         private void OnNoteButtonClick(object sender, RoutedEventArgs e)
         {
-            _keepNotchOpenForNote = true;
+            _keepNotchOpenForAux = true;
             FeaturePopup.IsOpen = false;
             ShowNoteWindow();
+        }
+
+        private void OnSettingsButtonClick(object sender, RoutedEventArgs e)
+        {
+            _keepNotchOpenForAux = true;
+            FeaturePopup.IsOpen = false;
+            ShowSettingsWindow();
         }
 
         private void ShowNoteWindow()
@@ -416,7 +438,7 @@ namespace WindowsNotch
             }
 
             var note = new NoteWindow();
-            PositionNoteWindow(note);
+            PositionAuxWindow(note);
 
             note.Closed += (s, e) =>
             {
@@ -441,7 +463,41 @@ namespace WindowsNotch
             note.Activate();
         }
 
-        private void PositionNoteWindow(Window note)
+        private void ShowSettingsWindow()
+        {
+            if (_settingsWindow is { IsVisible: true })
+            {
+                _settingsWindow.Activate();
+                return;
+            }
+
+            var settings = new SettingsWindow(_settings);
+            PositionAuxWindow(settings);
+
+            settings.SettingsChanged += (s, e) => ApplySettingsVisibility();
+
+            settings.Closed += (s, e) =>
+            {
+                _settingsWindow = null;
+
+                if (settings.ClosedByUser && !IsSideAnchor)
+                {
+                    OpenFeaturePanel();
+                    return;
+                }
+
+                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+
+                _collapseTimer.Stop();
+                CollapseNotch();
+            };
+
+            _settingsWindow = settings;
+            settings.Show();
+            settings.Activate();
+        }
+
+        private void PositionAuxWindow(Window window)
         {
             const double gap = 8;
 
@@ -457,20 +513,20 @@ namespace WindowsNotch
             }
 
             // Kalau ruang di kanan tidak cukup, buka di kiri ikon.
-            if (left + note.Width > work.Right - gap)
+            if (left + window.Width > work.Right - gap)
             {
-                left = Left + FeatureButton.Margin.Left - note.Width - gap;
+                left = Left + FeatureButton.Margin.Left - window.Width - gap;
             }
 
             left = Math.Clamp(left,
                 work.Left + gap,
-                Math.Max(work.Left + gap, work.Right - note.Width - gap));
+                Math.Max(work.Left + gap, work.Right - window.Width - gap));
             top = Math.Clamp(top,
                 work.Top + gap,
-                Math.Max(work.Top + gap, work.Bottom - note.Height - gap));
+                Math.Max(work.Top + gap, work.Bottom - window.Height - gap));
 
-            note.Left = left;
-            note.Top = top;
+            window.Left = left;
+            window.Top = top;
         }
 
         private void OnMediaChanged(MediaInfo? info)
@@ -1054,33 +1110,132 @@ namespace WindowsNotch
             return false;
         }
 
-        private static Settings LoadSettings()
+        private void OnPillDragEnter(object sender, DragEventArgs e)
         {
-            try
+            if (!HasFileDrop(e.Data))
             {
-                if (!File.Exists(SettingsPath)) return new Settings();
+                e.Effects = DragDropEffects.None;
+                return;
+            }
 
-                return JsonSerializer.Deserialize<Settings>(File.ReadAllText(SettingsPath))
-                       ?? new Settings();
-            }
-            catch
+            _isFileDragOver = true;
+            _collapseTimer.Stop();
+            DropIndicator.Visibility = Visibility.Visible;
+            ExpandNotch();
+
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+
+        private void OnPillDragOver(object sender, DragEventArgs e)
+        {
+            if (!HasFileDrop(e.Data))
             {
-                return new Settings();
+                e.Effects = DragDropEffects.None;
+                return;
             }
+
+            if (!_isFileDragOver)
+            {
+                _isFileDragOver = true;
+                _collapseTimer.Stop();
+                DropIndicator.Visibility = Visibility.Visible;
+            }
+
+            ExpandNotch();
+
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+
+        private void OnPillDragLeave(object sender, DragEventArgs e)
+        {
+            if (!_isFileDragOver) return;
+
+            _isFileDragOver = false;
+            DropIndicator.Visibility = Visibility.Collapsed;
+
+            if (IsAuxOpen || _isDragging) return;
+            if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+
+            _collapseTimer.Stop();
+            _collapseTimer.Start();
+        }
+
+        private void OnPillDrop(object sender, DragEventArgs e)
+        {
+            if (!TryGetDroppedPaths(e.Data, out var paths))
+            {
+                e.Effects = DragDropEffects.None;
+                return;
+            }
+
+            _isFileDragOver = false;
+            DropIndicator.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+
+            ShowDropShelf(paths);
+        }
+
+        private static bool HasFileDrop(IDataObject data)
+        {
+            return data.GetDataPresent(DataFormats.FileDrop);
+        }
+
+        private static bool TryGetDroppedPaths(IDataObject data, out string[] paths)
+        {
+            paths = Array.Empty<string>();
+
+            if (!data.GetDataPresent(DataFormats.FileDrop)) return false;
+            if (data.GetData(DataFormats.FileDrop) is not string[] dropped ||
+                dropped.Length == 0)
+            {
+                return false;
+            }
+
+            paths = dropped;
+            return true;
+        }
+
+        private void ShowDropShelf(string[] paths)
+        {
+            string[] validPaths = paths
+                .Where(path => File.Exists(path) || Directory.Exists(path))
+                .ToArray();
+
+            if (validPaths.Length == 0) return;
+
+            if (_dropShelf is { IsVisible: true })
+            {
+                _dropShelf.AddPaths(validPaths);
+                PositionAuxWindow(_dropShelf);
+                _dropShelf.Activate();
+                return;
+            }
+
+            var shelf = new DropShelfWindow(validPaths);
+            PositionAuxWindow(shelf);
+
+            shelf.Closed += (s, e) =>
+            {
+                _dropShelf = null;
+
+                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+
+                _collapseTimer.Stop();
+                CollapseNotch();
+            };
+
+            _dropShelf = shelf;
+            shelf.Show();
+            shelf.Activate();
         }
 
         private void SaveAnchor()
         {
-            try
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-                _settings.Anchor = _anchor.ToString();
-                File.WriteAllText(SettingsPath, JsonSerializer.Serialize(_settings));
-            }
-            catch
-            {
-                // Preferensi posisi bersifat opsional
-            }
+            _settings.Anchor = _anchor.ToString();
+            SettingsStore.Save(_settings);
         }
 
         // ===================== State =====================
