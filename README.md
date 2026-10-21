@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Notchi banner" width="100%" />
+  <img src="assets/banner.png" alt="Notchi banner" width="420" />
 </p>
 
 <p align="center">
@@ -37,6 +37,37 @@ The release installer is per-user and does not require administrator privileges.
 | Persistent position | Saves the last anchor and restores it on the next launch. |
 | Settings | Controls which system metrics are visible and whether the app starts with Windows. |
 | Lightweight design | Uses native WPF rendering with low idle CPU usage and private memory below 100 MB. |
+
+## Preview
+
+The screenshots below show the compact and expanded states of the main views.
+
+**Feature menu**
+
+<p align="center">
+  <img src="assets/preview/ss-menu-close.png" alt="Compact feature menu" width="380" />
+  &nbsp;&nbsp;
+  <img src="assets/preview/ss-menu-open.png" alt="Expanded feature menu" width="380" />
+</p>
+<p align="center"><sub>Compact and expanded</sub></p>
+
+**Media player**
+
+<p align="center">
+  <img src="assets/preview/ss-music-close.png" alt="Compact media player" width="380" />
+  &nbsp;&nbsp;
+  <img src="assets/preview/ss-music-open.png" alt="Expanded media player" width="380" />
+</p>
+<p align="center"><sub>Compact and expanded</sub></p>
+
+**Side anchor mode**
+
+<p align="center">
+  <img src="assets/preview/ss-side-music-close.png" alt="Compact side anchor" height="200" />
+  &nbsp;&nbsp;
+  <img src="assets/preview/ss-side-music-open.png" alt="Expanded side anchor" height="200" />
+</p>
+<p align="center"><sub>Compact and expanded</sub></p>
 
 ## Latest Update
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Banner Notchi" width="100%" />
+  <img src="assets/banner.png" alt="Banner Notchi" width="420" />
 </p>
 
 <p align="center">
@@ -37,6 +37,37 @@ Installer rilis bersifat per-user dan tidak memerlukan hak administrator.
 | Posisi tersimpan | Menyimpan anchor terakhir dan memulihkannya saat aplikasi dibuka kembali. |
 | Pengaturan | Mengatur metrik sistem yang ditampilkan dan apakah aplikasi berjalan otomatis saat Windows menyala. |
 | Desain ringan | Menggunakan rendering native WPF dengan pemakaian CPU idle rendah dan memori privat di bawah 100 MB. |
+
+## Tampilan
+
+Tangkapan layar berikut menunjukkan tampilan ringkas dan mengembang dari setiap bagian utama.
+
+**Menu fitur**
+
+<p align="center">
+  <img src="assets/preview/ss-menu-close.png" alt="Menu fitur ringkas" width="380" />
+  &nbsp;&nbsp;
+  <img src="assets/preview/ss-menu-open.png" alt="Menu fitur mengembang" width="380" />
+</p>
+<p align="center"><sub>Ringkas dan mengembang</sub></p>
+
+**Pemutar media**
+
+<p align="center">
+  <img src="assets/preview/ss-music-close.png" alt="Pemutar media ringkas" width="380" />
+  &nbsp;&nbsp;
+  <img src="assets/preview/ss-music-open.png" alt="Pemutar media mengembang" width="380" />
+</p>
+<p align="center"><sub>Ringkas dan mengembang</sub></p>
+
+**Mode sisi**
+
+<p align="center">
+  <img src="assets/preview/ss-side-music-close.png" alt="Mode sisi ringkas" height="200" />
+  &nbsp;&nbsp;
+  <img src="assets/preview/ss-side-music-open.png" alt="Mode sisi mengembang" height="200" />
+</p>
+<p align="center"><sub>Ringkas dan mengembang</sub></p>
 
 ## Pembaruan Terakhir
 
