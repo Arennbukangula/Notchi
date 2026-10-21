@@ -35,6 +35,7 @@ namespace WindowsNotch
             InitializeComponent();
 
             NotePath = ResolveNotePath();
+            MigrateLegacyNote(NotePath);
             HeaderTitle.ToolTip = NotePath;
 
             _saveTimer.Tick += OnSaveTimerTick;
@@ -216,7 +217,68 @@ namespace WindowsNotch
 
         private static string ResolveNotePath()
         {
-            return Path.Combine(GetDownloadsPath(), NoteFileName);
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Notchi",
+                NoteFileName);
+        }
+
+        private static void MigrateLegacyNote(string notePath)
+        {
+            try
+            {
+                if (File.Exists(notePath)) return;
+
+                string? legacyPath = FindLegacyNotePath();
+                if (legacyPath == null) return;
+
+                string? directory = Path.GetDirectoryName(notePath);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                try
+                {
+                    File.Move(legacyPath, notePath);
+                }
+                catch
+                {
+                    File.Copy(legacyPath, notePath);
+                    try
+                    {
+                        File.Delete(legacyPath);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private static string? FindLegacyNotePath()
+        {
+            string downloadsPath = GetDownloadsPath();
+            string legacyPath = Path.Combine(downloadsPath, NoteFileName);
+
+            if (File.Exists(legacyPath)) return legacyPath;
+
+            string fallbackPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                NoteFileName);
+
+            if (!string.Equals(fallbackPath, legacyPath,
+                    StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(fallbackPath))
+            {
+                return fallbackPath;
+            }
+
+            return null;
         }
 
         private static string GetDownloadsPath()
