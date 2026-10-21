@@ -1,22 +1,35 @@
 #define MyAppName "Notchi"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppExeName "Notchi.exe"
 
 [Setup]
 AppId={{D3A8B6E2-9F4C-4C1A-9B7E-2F6A1C8D5E10}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=Notchi
+AppVerName={#MyAppName} {#MyAppVersion}
+AppPublisher=risuunava
+AppPublisherURL=https://github.com/risuunava/Notchi
+AppSupportURL=https://github.com/risuunava/Notchi/issues
+AppUpdatesURL=https://github.com/risuunava/Notchi/releases
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
+MinVersion=10.0.19041
+LicenseFile=..\LICENSE
+SetupIconFile=..\assets\icon.ico
+AppMutex=Notchi.SingleInstance
+VersionInfoVersion=1.0.1.0
+VersionInfoProductName=Notchi
+VersionInfoCompany=risuunava
+VersionInfoDescription=Notchi installer
 OutputDir=..\publish
 OutputBaseFilename=NotchiSetup-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+UninstallDisplayName={#MyAppName} {#MyAppVersion}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
 
