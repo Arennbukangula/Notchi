@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -10,11 +11,50 @@ namespace WindowsNotch;
 /// </summary>
 public partial class App : Application
 {
+    private const string SingleInstanceMutexName = "Notchi.SingleInstance";
+
+    private Mutex? _singleInstanceMutex;
+
     public App()
     {
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+    }
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        bool isFirstInstance = true;
+
+        try
+        {
+            _singleInstanceMutex = new Mutex(
+                true,
+                SingleInstanceMutexName,
+                out isFirstInstance);
+        }
+        catch (Exception exception)
+        {
+            CrashLogger.Log("SingleInstanceMutex", exception);
+        }
+
+        if (!isFirstInstance)
+        {
+            Shutdown();
+            return;
+        }
+
+        var mainWindow = new MainWindow();
+        MainWindow = mainWindow;
+        mainWindow.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _singleInstanceMutex?.Dispose();
+        base.OnExit(e);
     }
 
     private static void OnDispatcherUnhandledException(
