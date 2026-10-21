@@ -211,8 +211,6 @@ namespace WindowsNotch
                     CollapseNotch();
                 }
             };
-            PillHost.MouseRightButtonDown += (s, e) => Application.Current.Shutdown();
-
             // Kapsul fitur: menu terbuka saat kursor hover, tertutup saat kursor pergi
             FeatureButton.MouseEnter += (s, e) =>
             {
