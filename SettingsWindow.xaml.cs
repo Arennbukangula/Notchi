@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -10,11 +11,13 @@ namespace WindowsNotch
     {
         private static readonly Brush MutedBrush = FrozenBrush(0x6E, 0x6E, 0x73);
         private static readonly Brush ErrorBrush = FrozenBrush(0xFF, 0x6B, 0x6B);
+        private static readonly Brush AccentBrush = FrozenBrush(0x3D, 0x7E, 0xFF);
 
         private readonly AppSettings _settings;
         private bool _isReady;
         private bool _isClosing;
         private bool _initializing = true;
+        private bool _isRecordingHotkey;
 
         public SettingsWindow(AppSettings settings)
         {
@@ -35,6 +38,9 @@ namespace WindowsNotch
             IndonesianOption.IsChecked = language == "id";
             EnglishOption.IsChecked = language == "en";
 
+            // Tampilkan hotkey saat ini
+            HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
+
             ShowCpuToggle.Click += OnMetricToggleChanged;
             ShowRamToggle.Click += OnMetricToggleChanged;
             ShowDiskToggle.Click += OnMetricToggleChanged;
@@ -43,6 +49,8 @@ namespace WindowsNotch
             IndonesianOption.Checked += OnLanguageChanged;
             EnglishOption.Checked += OnLanguageChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
+
+            HotkeyRecorder.MouseLeftButtonDown += OnHotkeyRecorderClick;
 
             Activated += (s, e) => _isReady = true;
             Deactivated += OnDeactivated;
@@ -63,6 +71,15 @@ namespace WindowsNotch
         public event EventHandler? SettingsChanged;
 
         public bool ClosedByUser { get; private set; }
+
+        private void OnHotkeyRecorderClick(object sender, MouseButtonEventArgs e)
+        {
+            if (_isRecordingHotkey) return;
+
+            _isRecordingHotkey = true;
+            HotkeyLabel.Text = Localization.Get("HotkeyRecording");
+            HotkeyRecorder.BorderBrush = AccentBrush;
+        }
 
         private void OnMetricToggleChanged(object? sender, RoutedEventArgs e)
         {
@@ -134,6 +151,15 @@ namespace WindowsNotch
             if (!_isReady || _isClosing || !IsVisible) return;
             if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
 
+            // Batalkan recording saat window kehilangan fokus
+            if (_isRecordingHotkey)
+            {
+                _isRecordingHotkey = false;
+                HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
+                HotkeyRecorder.BorderBrush = new SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3E));
+            }
+
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
                 if (_isClosing || !IsVisible || IsActive) return;
@@ -168,9 +194,66 @@ namespace WindowsNotch
 
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (_isRecordingHotkey)
+            {
+                HandleHotkeyRecording(e);
+                return;
+            }
+
             if (e.Key != Key.Escape) return;
 
             CloseFromUser();
+            e.Handled = true;
+        }
+
+        private void HandleHotkeyRecording(KeyEventArgs e)
+        {
+            // Escape = batalkan
+            if (e.Key == Key.Escape)
+            {
+                _isRecordingHotkey = false;
+                HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
+                HotkeyRecorder.BorderBrush = new SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3E));
+                e.Handled = true;
+                return;
+            }
+
+            // Abaikan jika hanya modifier saja yang ditekan
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key is Key.LeftCtrl or Key.RightCtrl or
+                       Key.LeftShift or Key.RightShift or
+                       Key.LeftAlt or Key.RightAlt or
+                       Key.LWin or Key.RWin)
+            {
+                return;
+            }
+
+            // Hitung modifier
+            uint mods = 0;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) mods |= 2;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))   mods |= 4;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))     mods |= 1;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Windows)) mods |= 8;
+
+            // Butuh setidaknya satu modifier
+            if (mods == 0)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+
+            _settings.HotkeyModifiers = mods;
+            _settings.HotkeyKey = vk;
+
+            _isRecordingHotkey = false;
+            HotkeyLabel.Text = FormatHotkey(mods, vk);
+            HotkeyRecorder.BorderBrush = new SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3E));
+
+            SaveSettings();
             e.Handled = true;
         }
 
@@ -179,9 +262,37 @@ namespace WindowsNotch
             _isClosing = true;
         }
 
+        /// <summary>
+        /// Format kombinasi hotkey menjadi string yang mudah dibaca.
+        /// </summary>
+        internal static string FormatHotkey(uint modifiers, uint vk)
+        {
+            var parts = new List<string>();
+            if ((modifiers & 8) != 0) parts.Add("Win");
+            if ((modifiers & 2) != 0) parts.Add("Ctrl");
+            if ((modifiers & 4) != 0) parts.Add("Shift");
+            if ((modifiers & 1) != 0) parts.Add("Alt");
+
+            if (vk != 0)
+            {
+                var key = KeyInterop.KeyFromVirtualKey((int)vk);
+                // Sederhanakan nama key agar lebih mudah dibaca
+                string keyName = key switch
+                {
+                    Key.Space => "Space",
+                    Key.Return => "Enter",
+                    Key.Back => "Backspace",
+                    _ => key.ToString()
+                };
+                parts.Add(keyName);
+            }
+
+            return parts.Count > 0 ? string.Join("+", parts) : "—";
+        }
+
         private static Brush FrozenBrush(byte r, byte g, byte b)
         {
-            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            var brush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, b));
             brush.Freeze();
             return brush;
         }

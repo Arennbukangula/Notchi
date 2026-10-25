@@ -1,7 +1,7 @@
 <Window x:Class="WindowsNotch.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="{DynamicResource SettingsTitle}" Width="280" Height="316"
+        Title="{DynamicResource SettingsTitle}" Width="280" Height="390"
         WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="NoResize"
         ShowInTaskbar="False" Topmost="True"
@@ -207,6 +207,32 @@
                                  Content="{DynamicResource LanguageEnglish}"
                                  Style="{StaticResource SettingsLanguageOption}"
                                  Margin="4,0,0,0"/>
+                </Grid>
+
+                <Border Height="1" Background="#2E2E30" Margin="0,10,0,0"/>
+
+                <TextBlock Text="{DynamicResource HotkeySection}" Foreground="#6E6E73"
+                           FontSize="8" FontWeight="Bold" Margin="0,10,0,0"/>
+
+                <Grid Margin="0,5,0,0">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{DynamicResource HotkeyTitle}"
+                                   Foreground="#F5F5F7" FontSize="11"/>
+                        <TextBlock Text="{DynamicResource HotkeyDescription}"
+                                   Foreground="#6E6E73" FontSize="8.5"
+                                   Margin="0,1,0,0"/>
+                    </StackPanel>
+                    <Border x:Name="HotkeyRecorder"
+                            Background="#2C2C2E" CornerRadius="6"
+                            Padding="10,5" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Cursor="Hand"
+                            MinWidth="90" BorderThickness="1"
+                            BorderBrush="#3A3A3E">
+                        <TextBlock x:Name="HotkeyLabel"
+                                   Foreground="#F5F5F7" FontSize="10"
+                                   HorizontalAlignment="Center"
+                                   FontFamily="Consolas"/>
+                    </Border>
                 </Grid>
             </StackPanel>
         </Grid>
