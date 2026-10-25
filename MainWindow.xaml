@@ -309,15 +309,21 @@
                 <!-- Collapsed: hanya jam dan tanggal agar capsule tetap bersih -->
                 <StackPanel x:Name="IdleCompactRoot" Visibility="Collapsed"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock x:Name="CompactClockText" Text="08:42" Foreground="White"
-                               FontSize="15" FontWeight="SemiBold" LineHeight="17"
-                               HorizontalAlignment="Center"/>
-                    <Border x:Name="CompactAccentLine" Width="12" Height="0.75"
-                            Margin="0,2,0,2" CornerRadius="0.5"
-                            Background="{StaticResource DividerBrush}"
-                            HorizontalAlignment="Center"/>
-                    <TextBlock x:Name="CompactDateText" Text="Sen, 19 Okt" Foreground="{StaticResource TextSecondaryBrush}"
-                               FontSize="9" LineHeight="10" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="CompactClockText" Text="08:42"
+                               FontSize="16" FontWeight="Bold" LineHeight="18"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FFFFFF" Offset="0"/>
+                                <GradientStop Color="#C8C8D0" Offset="1"/>
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                    <!-- Tidak ada garis pemisah - langsung date di bawah -->
+                    <TextBlock x:Name="CompactDateText" Text="Sen, 19 Okt"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="8.5" LineHeight="10" HorizontalAlignment="Center"
+                               Margin="0,1,0,0"/>
                 </StackPanel>
 
                 <!-- Expanded: jam besar, tanggal, metrik lengkap, baterai -->
