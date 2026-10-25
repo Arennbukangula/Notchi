@@ -30,11 +30,18 @@ namespace WindowsNotch
             AutoStartToggle.IsChecked = StartupService.IsEnabled();
             _settings.AutoStart = AutoStartToggle.IsChecked == true;
 
+            string language = Localization.Normalize(settings.Language);
+            _settings.Language = language;
+            IndonesianOption.IsChecked = language == "id";
+            EnglishOption.IsChecked = language == "en";
+
             ShowCpuToggle.Click += OnMetricToggleChanged;
             ShowRamToggle.Click += OnMetricToggleChanged;
             ShowDiskToggle.Click += OnMetricToggleChanged;
             ShowBatteryToggle.Click += OnMetricToggleChanged;
             AutoStartToggle.Click += OnAutoStartToggleChanged;
+            IndonesianOption.Checked += OnLanguageChanged;
+            EnglishOption.Checked += OnLanguageChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
 
             Activated += (s, e) => _isReady = true;
@@ -80,7 +87,7 @@ namespace WindowsNotch
                 _initializing = true;
                 AutoStartToggle.IsChecked = !enabled;
                 _initializing = false;
-                SetStatus("Gagal mengubah autostart", isError: true);
+                SetStatus(Localization.Get("AutostartFailed"), isError: true);
                 return;
             }
 
@@ -88,10 +95,24 @@ namespace WindowsNotch
             SaveSettings();
         }
 
+        private void OnLanguageChanged(object? sender, RoutedEventArgs e)
+        {
+            if (_initializing) return;
+
+            string language = EnglishOption.IsChecked == true ? "en" : "id";
+            if (language == _settings.Language) return;
+
+            _settings.Language = language;
+            Localization.Apply(language);
+            SaveSettings();
+        }
+
         private void SaveSettings()
         {
             bool saved = SettingsStore.Save(_settings);
-            SetStatus(saved ? "Tersimpan" : "Gagal menyimpan", isError: !saved);
+            SetStatus(
+                Localization.Get(saved ? "Saved" : "SaveFailed"),
+                isError: !saved);
 
             SettingsChanged?.Invoke(this, EventArgs.Empty);
         }

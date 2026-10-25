@@ -120,16 +120,16 @@ namespace WindowsNotch
                 if (File.Exists(NotePath))
                 {
                     NoteTextBox.Text = File.ReadAllText(NotePath, Encoding.UTF8);
-                    SetStatus("Tersimpan", isError: false);
+                    SetStatus(Localization.Get("Saved"), isError: false);
                 }
                 else
                 {
-                    SetStatus("Catatan baru", isError: false);
+                    SetStatus(Localization.Get("NewNote"), isError: false);
                 }
             }
             catch
             {
-                SetStatus("Gagal memuat", isError: true);
+                SetStatus(Localization.Get("LoadFailed"), isError: true);
             }
             finally
             {
@@ -144,7 +144,7 @@ namespace WindowsNotch
 
             _userEdited = true;
             UpdatePlaceholder();
-            SetStatus("Menyimpan...", isError: false);
+            SetStatus(Localization.Get("Saving"), isError: false);
 
             _saveTimer.Stop();
             _saveTimer.Start();
@@ -170,11 +170,11 @@ namespace WindowsNotch
 
                 File.WriteAllText(NotePath, NoteTextBox.Text, Utf8NoBom);
                 _userEdited = false;
-                SetStatus("Tersimpan", isError: false);
+                SetStatus(Localization.Get("Saved"), isError: false);
             }
             catch
             {
-                SetStatus("Gagal menyimpan", isError: true);
+                SetStatus(Localization.Get("SaveFailed"), isError: true);
             }
         }
 

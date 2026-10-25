@@ -188,6 +188,7 @@ namespace WindowsNotch
             };
             StartClock();
             ApplySettingsVisibility();
+            Localization.LanguageChanged += OnLanguageChanged;
 
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
@@ -1458,8 +1459,14 @@ namespace WindowsNotch
         {
             FileButton.IsEnabled = _droppedPaths.Count > 0;
             FileMenuLabel.Text = _droppedPaths.Count > 0
-                ? $"File ({_droppedPaths.Count})"
-                : "File";
+                ? Localization.Format("FileCountLabel", _droppedPaths.Count)
+                : Localization.Get("FileTitle");
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            UpdateFileMenuLabel();
+            UpdateClock();
         }
 
         private void SaveAnchor()
@@ -1717,6 +1724,7 @@ namespace WindowsNotch
 
         protected override void OnClosed(EventArgs e)
         {
+            Localization.LanguageChanged -= OnLanguageChanged;
             _mediaTimer.Stop();
             _timer.Stop();
             _systemStatus.StatusChanged -= OnSystemStatusChanged;

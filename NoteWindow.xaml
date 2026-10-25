@@ -1,7 +1,7 @@
 <Window x:Class="WindowsNotch.NoteWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Catatan" Width="260" Height="170"
+        Title="{DynamicResource NoteTitle}" Width="260" Height="170"
         WindowStyle="None" AllowsTransparency="True"
         Background="Transparent" ResizeMode="NoResize"
         ShowInTaskbar="False" Topmost="True"
@@ -59,11 +59,11 @@
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                               StrokeLineJoin="Round" Fill="Transparent"/>
                     </Viewbox>
-                    <TextBlock Text="Catatan" Foreground="#F5F5F7"
+                    <TextBlock Text="{DynamicResource Notes}" Foreground="#F5F5F7"
                                FontSize="11.5" FontWeight="SemiBold"/>
                 </StackPanel>
 
-                <TextBlock x:Name="StatusText" Text="Tersimpan"
+                <TextBlock x:Name="StatusText" Text="{DynamicResource Saved}"
                            Foreground="#6E6E73" FontSize="9"
                            HorizontalAlignment="Right" VerticalAlignment="Center"
                            Margin="0,0,22,0"/>
@@ -88,7 +88,7 @@
                              VerticalContentAlignment="Top"
                              VerticalScrollBarVisibility="Auto"
                              HorizontalScrollBarVisibility="Disabled"/>
-                    <TextBlock x:Name="PlaceholderText" Text="Tulis catatan..."
+                    <TextBlock x:Name="PlaceholderText" Text="{DynamicResource NotePlaceholder}"
                                Foreground="#6E6E73" FontSize="12"
                                IsHitTestVisible="False" Margin="1,0,0,0"/>
                 </Grid>

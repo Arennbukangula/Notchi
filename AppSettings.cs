@@ -8,5 +8,6 @@ namespace WindowsNotch
         public bool ShowDisk { get; set; } = true;
         public bool ShowBattery { get; set; } = true;
         public bool AutoStart { get; set; }
+        public string Language { get; set; } = Localization.DefaultLanguage;
     }
 }

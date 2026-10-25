@@ -1,0 +1,56 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="SettingsTitle">Pengaturan</sys:String>
+    <sys:String x:Key="NoteTitle">Catatan</sys:String>
+    <sys:String x:Key="FileTitle">File</sys:String>
+
+    <sys:String x:Key="Saved">Tersimpan</sys:String>
+    <sys:String x:Key="SaveFailed">Gagal menyimpan</sys:String>
+    <sys:String x:Key="Settings">Pengaturan</sys:String>
+    <sys:String x:Key="Notes">Catatan</sys:String>
+    <sys:String x:Key="Files">File</sys:String>
+    <sys:String x:Key="Exit">Keluar</sys:String>
+
+    <sys:String x:Key="Metrics">METRIK</sys:String>
+    <sys:String x:Key="Battery">Baterai</sys:String>
+    <sys:String x:Key="System">SISTEM</sys:String>
+
+    <sys:String x:Key="StartupTitle">Jalankan saat Windows menyala</sys:String>
+    <sys:String x:Key="StartupDescription">Mulai otomatis saat login</sys:String>
+    <sys:String x:Key="AutostartFailed">Gagal mengubah autostart</sys:String>
+
+    <sys:String x:Key="LanguageSection">BAHASA</sys:String>
+    <sys:String x:Key="LanguageIndonesian">Bahasa Indonesia</sys:String>
+    <sys:String x:Key="LanguageEnglish">English</sys:String>
+
+    <sys:String x:Key="DropFilesHere">Lepaskan file di sini</sys:String>
+
+    <sys:String x:Key="NotePlaceholder">Tulis catatan...</sys:String>
+    <sys:String x:Key="NewNote">Catatan baru</sys:String>
+    <sys:String x:Key="LoadFailed">Gagal memuat</sys:String>
+    <sys:String x:Key="Saving">Menyimpan...</sys:String>
+
+    <sys:String x:Key="NoFiles">Tidak ada file</sys:String>
+    <sys:String x:Key="FileCountOne">1 item</sys:String>
+    <sys:String x:Key="FileCountMany">{0} item</sys:String>
+    <sys:String x:Key="AddFilesHint">Lepas file lagi ke notch untuk menambah</sys:String>
+    <sys:String x:Key="OpenFailed">Gagal membuka file</sys:String>
+    <sys:String x:Key="PathCopied">Path disalin</sys:String>
+    <sys:String x:Key="PathCopyFailed">Gagal menyalin path</sys:String>
+    <sys:String x:Key="NothingToOpen">Tidak ada file yang bisa dibuka</sys:String>
+    <sys:String x:Key="SomeOpenFailed">Sebagian file gagal dibuka</sys:String>
+    <sys:String x:Key="OpenLimit">Maksimal {0} file dibuka sekaligus</sys:String>
+    <sys:String x:Key="RevealFailed">Gagal membuka Explorer</sys:String>
+
+    <sys:String x:Key="Open">Buka</sys:String>
+    <sys:String x:Key="RevealInExplorer">Tampilkan di Explorer</sys:String>
+    <sys:String x:Key="CopyPath">Salin path</sys:String>
+    <sys:String x:Key="OpenAll">Buka semua</sys:String>
+    <sys:String x:Key="Clear">Bersihkan</sys:String>
+
+    <sys:String x:Key="FileCountLabel">File ({0})</sys:String>
+
+</ResourceDictionary>
+
