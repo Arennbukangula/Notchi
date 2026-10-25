@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag rilis yang sudah ada (contoh: v1.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Validate version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $tag = $env:RELEASE_TAG
+          if ($tag -notmatch '^v(?<version>\d+\.\d+\.\d+)$') {
+            throw "Tag '$tag' harus berformat vX.Y.Z."
+          }
+
+          $version = $Matches['version']
+          [xml]$project = Get-Content -LiteralPath '.\Notchi.csproj'
+          $projectVersion = [string](@($project.Project.PropertyGroup.Version) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1)
+          $projectVersion = $projectVersion.Trim()
+
+          if ($projectVersion -ne $version) {
+            throw "Versi Notchi.csproj ($projectVersion) tidak sama dengan tag ($version)."
+          }
+
+          "APP_VERSION=$version" >> $env:GITHUB_ENV
+          "APP_VERSION_NUMERIC=$version.0" >> $env:GITHUB_ENV
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+          $candidates = @(
+            (Join-Path $env:ProgramFiles 'Inno Setup 7\ISCC.exe'),
+            (Join-Path $programFilesX86 'Inno Setup 7\ISCC.exe'),
+            (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
+            (Join-Path $programFilesX86 'Inno Setup 6\ISCC.exe')
+          )
+
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          }
+
+          if (-not $iscc) {
+            throw 'ISCC.exe tidak ditemukan setelah instalasi Inno Setup.'
+          }
+
+          "ISCC_PATH=$iscc" >> $env:GITHUB_ENV
+
+      - name: Build single-file and installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\publish-release.ps1 -IsccPath $env:ISCC_PATH
+
+      - name: Verify artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $appExe = '.\publish\win-x64\Notchi.exe'
+          $setup = '.\publish\NotchiSetup-x64.exe'
+          $checksums = '.\publish\SHA256SUMS.txt'
+
+          foreach ($path in @($appExe, $setup, $checksums)) {
+            if (-not (Test-Path -LiteralPath $path)) {
+              throw "Artifact tidak ditemukan: $path"
+            }
+          }
+
+          if (Get-ChildItem '.\publish\win-x64' -Filter 'Notchi.dll' -Force) {
+            throw 'Masih ada Notchi.dll terpisah di output publish.'
+          }
+
+          $expected = $env:APP_VERSION_NUMERIC
+          $exeVersion = (Get-Item -LiteralPath $appExe).VersionInfo.FileVersion
+          $setupVersion = (Get-Item -LiteralPath $setup).VersionInfo.FileVersion
+
+          if ($exeVersion -ne $expected) {
+            throw "FileVersion Notchi.exe ($exeVersion) tidak sama dengan $expected."
+          }
+
+          if ($setupVersion -ne $expected) {
+            throw "FileVersion NotchiSetup-x64.exe ($setupVersion) tidak sama dengan $expected."
+          }
+
+      - name: Create or update draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:RELEASE_TAG
+
+          $existingJson = gh release view $tag --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            $release = $existingJson | ConvertFrom-Json
+            if (-not $release.isDraft) {
+              throw "Release $tag sudah published. Draft tidak akan ditimpa."
+            }
+
+            gh release upload $tag `
+              '.\publish\NotchiSetup-x64.exe' `
+              '.\publish\SHA256SUMS.txt' `
+              --clobber
+          }
+          else {
+            gh release create $tag `
+              '.\publish\NotchiSetup-x64.exe' `
+              '.\publish\SHA256SUMS.txt' `
+              --draft `
+              --title "Notchi $tag" `
+              --generate-notes
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Gagal membuat atau memperbarui draft release.'
+          }
