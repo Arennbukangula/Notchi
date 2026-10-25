@@ -168,6 +168,15 @@ namespace WindowsNotch
             }
         }
 
+        private void OnRemoveItemClick(object sender, RoutedEventArgs e)
+        {
+            if (GetItem(sender) is not { } item) return;
+
+            _items.Remove(item);
+            RefreshList();
+            ItemsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         private void OpenAll()
         {
             int opened = 0;

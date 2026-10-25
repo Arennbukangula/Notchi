@@ -47,6 +47,7 @@
     <sys:String x:Key="Open">Open</sys:String>
     <sys:String x:Key="RevealInExplorer">Show in Explorer</sys:String>
     <sys:String x:Key="CopyPath">Copy path</sys:String>
+    <sys:String x:Key="RemoveItem">Remove</sys:String>
     <sys:String x:Key="OpenAll">Open all</sys:String>
     <sys:String x:Key="Clear">Clear</sys:String>
 

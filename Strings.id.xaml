@@ -47,6 +47,7 @@
     <sys:String x:Key="Open">Buka</sys:String>
     <sys:String x:Key="RevealInExplorer">Tampilkan di Explorer</sys:String>
     <sys:String x:Key="CopyPath">Salin path</sys:String>
+    <sys:String x:Key="RemoveItem">Hapus</sys:String>
     <sys:String x:Key="OpenAll">Buka semua</sys:String>
     <sys:String x:Key="Clear">Bersihkan</sys:String>
 
