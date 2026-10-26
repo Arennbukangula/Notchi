@@ -87,8 +87,8 @@ namespace WindowsNotch
             ItemsList.ItemsSource = _items;
 
             FileCountText.Text = _items.Count == 1
-                ? "1 item"
-                : $"{_items.Count} item";
+                ? Localization.Get("FileCountOne")
+                : Localization.Format("FileCountMany", _items.Count);
 
             bool hasItems = _items.Count > 0;
             ItemsScroll.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
@@ -98,7 +98,7 @@ namespace WindowsNotch
 
             if (hasItems && string.IsNullOrEmpty(StatusText.Text))
             {
-                SetStatus("Lepas file lagi ke notch untuk menambah", isError: false);
+                SetStatus(Localization.Get("AddFilesHint"), isError: false);
             }
 
             Height = Math.Clamp(130 + _items.Count * 42, 170, 340);
@@ -142,7 +142,7 @@ namespace WindowsNotch
 
             if (!TryOpen(item.Path))
             {
-                SetStatus("Gagal membuka file", isError: true);
+                SetStatus(Localization.Get("OpenFailed"), isError: true);
             }
         }
 
@@ -160,12 +160,21 @@ namespace WindowsNotch
             try
             {
                 Clipboard.SetText(item.Path);
-                SetStatus("Path disalin", isError: false);
+                SetStatus(Localization.Get("PathCopied"), isError: false);
             }
             catch
             {
-                SetStatus("Gagal menyalin path", isError: true);
+                SetStatus(Localization.Get("PathCopyFailed"), isError: true);
             }
+        }
+
+        private void OnRemoveItemClick(object sender, RoutedEventArgs e)
+        {
+            if (GetItem(sender) is not { } item) return;
+
+            _items.Remove(item);
+            RefreshList();
+            ItemsChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void OpenAll()
@@ -183,15 +192,15 @@ namespace WindowsNotch
 
             if (opened == 0)
             {
-                SetStatus("Tidak ada file yang bisa dibuka", isError: true);
+                SetStatus(Localization.Get("NothingToOpen"), isError: true);
             }
             else if (failed > 0)
             {
-                SetStatus("Sebagian file gagal dibuka", isError: true);
+                SetStatus(Localization.Get("SomeOpenFailed"), isError: true);
             }
             else if (_items.Count > MaxOpenAllItems)
             {
-                SetStatus($"Maksimal {MaxOpenAllItems} file dibuka sekaligus",
+                SetStatus(Localization.Format("OpenLimit", MaxOpenAllItems),
                     isError: true);
             }
             else
@@ -242,7 +251,7 @@ namespace WindowsNotch
             }
             catch
             {
-                SetStatus("Gagal membuka Explorer", isError: true);
+                SetStatus(Localization.Get("RevealFailed"), isError: true);
             }
         }
 

@@ -1,0 +1,62 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="SettingsTitle">Settings</sys:String>
+    <sys:String x:Key="NoteTitle">Notes</sys:String>
+    <sys:String x:Key="FileTitle">Files</sys:String>
+
+    <sys:String x:Key="Saved">Saved</sys:String>
+    <sys:String x:Key="SaveFailed">Failed to save</sys:String>
+    <sys:String x:Key="Settings">Settings</sys:String>
+    <sys:String x:Key="Notes">Notes</sys:String>
+    <sys:String x:Key="Files">Files</sys:String>
+    <sys:String x:Key="Exit">Quit</sys:String>
+
+    <sys:String x:Key="Metrics">METRICS</sys:String>
+    <sys:String x:Key="Battery">Battery</sys:String>
+    <sys:String x:Key="System">SYSTEM</sys:String>
+
+    <sys:String x:Key="StartupTitle">Launch when Windows starts</sys:String>
+    <sys:String x:Key="StartupDescription">Start automatically on sign-in</sys:String>
+    <sys:String x:Key="AutostartFailed">Failed to change startup setting</sys:String>
+
+    <sys:String x:Key="LanguageSection">LANGUAGE</sys:String>
+    <sys:String x:Key="LanguageIndonesian">Bahasa Indonesia</sys:String>
+    <sys:String x:Key="LanguageEnglish">English</sys:String>
+
+    <sys:String x:Key="DropFilesHere">Drop files here</sys:String>
+
+    <sys:String x:Key="NotePlaceholder">Write a note...</sys:String>
+    <sys:String x:Key="NewNote">New note</sys:String>
+    <sys:String x:Key="LoadFailed">Failed to load</sys:String>
+    <sys:String x:Key="Saving">Saving...</sys:String>
+
+    <sys:String x:Key="NoFiles">No files</sys:String>
+    <sys:String x:Key="FileCountOne">1 item</sys:String>
+    <sys:String x:Key="FileCountMany">{0} items</sys:String>
+    <sys:String x:Key="AddFilesHint">Drop more files onto the notch to add them</sys:String>
+    <sys:String x:Key="OpenFailed">Failed to open file</sys:String>
+    <sys:String x:Key="PathCopied">Path copied</sys:String>
+    <sys:String x:Key="PathCopyFailed">Failed to copy path</sys:String>
+    <sys:String x:Key="NothingToOpen">No files could be opened</sys:String>
+    <sys:String x:Key="SomeOpenFailed">Some files could not be opened</sys:String>
+    <sys:String x:Key="OpenLimit">Up to {0} files can be opened at once</sys:String>
+    <sys:String x:Key="RevealFailed">Failed to open Explorer</sys:String>
+
+    <sys:String x:Key="Open">Open</sys:String>
+    <sys:String x:Key="RevealInExplorer">Show in Explorer</sys:String>
+    <sys:String x:Key="CopyPath">Copy path</sys:String>
+    <sys:String x:Key="RemoveItem">Remove</sys:String>
+    <sys:String x:Key="OpenAll">Open all</sys:String>
+    <sys:String x:Key="Clear">Clear</sys:String>
+
+    <sys:String x:Key="FileCountLabel">Files ({0})</sys:String>
+
+    <sys:String x:Key="HotkeySection">SHORTCUT</sys:String>
+    <sys:String x:Key="HotkeyTitle">Hide / show</sys:String>
+    <sys:String x:Key="HotkeyDescription">Click to change shortcut</sys:String>
+    <sys:String x:Key="HotkeyRecording">Press combo...</sys:String>
+
+</ResourceDictionary>
+

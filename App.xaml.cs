@@ -46,6 +46,8 @@ public partial class App : Application
             return;
         }
 
+        Localization.Apply(SettingsStore.Load().Language);
+
         var mainWindow = new MainWindow();
         MainWindow = mainWindow;
         mainWindow.Show();

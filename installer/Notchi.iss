@@ -1,6 +1,13 @@
 #define MyAppName "Notchi"
-#define MyAppVersion "1.0.1"
 #define MyAppExeName "Notchi.exe"
+
+#ifndef MyAppVersion
+  #define MyAppVersion "1.1.0"
+#endif
+
+#ifndef MyAppVersionNumeric
+  #define MyAppVersionNumeric "1.1.0.0"
+#endif
 
 [Setup]
 AppId={{D3A8B6E2-9F4C-4C1A-9B7E-2F6A1C8D5E10}
@@ -20,7 +27,7 @@ MinVersion=10.0.19041
 LicenseFile=..\LICENSE
 SetupIconFile=..\assets\icon.ico
 AppMutex=Notchi.SingleInstance
-VersionInfoVersion=1.0.1.0
+VersionInfoVersion={#MyAppVersionNumeric}
 VersionInfoProductName=Notchi
 VersionInfoCompany=risuunava
 VersionInfoDescription=Notchi installer

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -128,6 +128,8 @@ namespace WindowsNotch
         private SettingsWindow? _settingsWindow;
         private DropShelfWindow? _dropShelf;
         private readonly List<string> _droppedPaths = new();
+        private readonly GlobalHotkeyService _hotkey = new();
+        private bool _isHidden;
         private int _animationVersion;
         private Point _dragStartCursor;
         private Point _dragGrab;
@@ -188,6 +190,7 @@ namespace WindowsNotch
             };
             StartClock();
             ApplySettingsVisibility();
+            Localization.LanguageChanged += OnLanguageChanged;
 
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
@@ -296,6 +299,10 @@ namespace WindowsNotch
                 var hwnd = new WindowInteropHelper(this).Handle;
                 int exStyle = GetWindowLong(hwnd, GwlExStyle);
                 SetWindowLong(hwnd, GwlExStyle, exStyle | WsExNoActivate | WsExToolWindow);
+
+                _hotkey.Initialize(this);
+                _hotkey.HotkeyPressed += (_, _) => ToggleNotchiVisibility();
+                _hotkey.Register(_settings.HotkeyModifiers, _settings.HotkeyKey);
             };
 
             WireMediaControls();
@@ -495,7 +502,11 @@ namespace WindowsNotch
             var settings = new SettingsWindow(_settings);
             PositionAuxWindow(settings);
 
-            settings.SettingsChanged += (s, e) => ApplySettingsVisibility();
+            settings.SettingsChanged += (s, e) =>
+            {
+                ApplySettingsVisibility();
+                _hotkey.Register(_settings.HotkeyModifiers, _settings.HotkeyKey);
+            };
 
             settings.Closed += (s, e) =>
             {
@@ -1458,8 +1469,14 @@ namespace WindowsNotch
         {
             FileButton.IsEnabled = _droppedPaths.Count > 0;
             FileMenuLabel.Text = _droppedPaths.Count > 0
-                ? $"File ({_droppedPaths.Count})"
-                : "File";
+                ? Localization.Format("FileCountLabel", _droppedPaths.Count)
+                : Localization.Get("FileTitle");
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            UpdateFileMenuLabel();
+            UpdateClock();
         }
 
         private void SaveAnchor()
@@ -1715,8 +1732,39 @@ namespace WindowsNotch
             PillHost.BeginAnimation(property, anim);
         }
 
+        private void ToggleNotchiVisibility()
+        {
+            if (_isHidden)
+            {
+                // Tampilkan kembali dengan fade-in
+                _isHidden = false;
+                Visibility = Visibility.Visible;
+                var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(180)))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                BeginAnimation(OpacityProperty, fadeIn);
+            }
+            else
+            {
+                // Sembunyikan dengan fade-out
+                var fadeOut = new DoubleAnimation(1, 0, new Duration(TimeSpan.FromMilliseconds(150)))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+                };
+                fadeOut.Completed += (_, _) =>
+                {
+                    Visibility = Visibility.Hidden;
+                    _isHidden = true;
+                };
+                BeginAnimation(OpacityProperty, fadeOut);
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            _hotkey.Dispose();
+            Localization.LanguageChanged -= OnLanguageChanged;
             _mediaTimer.Stop();
             _timer.Stop();
             _systemStatus.StatusChanged -= OnSystemStatusChanged;
