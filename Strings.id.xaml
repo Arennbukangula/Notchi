@@ -26,6 +26,8 @@
     <sys:String x:Key="LanguageEnglish">English</sys:String>
 
     <sys:String x:Key="DropFilesHere">Lepaskan file di sini</sys:String>
+    <sys:String x:Key="DropToPath">Ke path</sys:String>
+    <sys:String x:Key="DropToConvert">Ke konversi</sys:String>
 
     <sys:String x:Key="NotePlaceholder">Tulis catatan...</sys:String>
     <sys:String x:Key="NewNote">Catatan baru</sys:String>
@@ -43,6 +45,37 @@
     <sys:String x:Key="SomeOpenFailed">Sebagian file gagal dibuka</sys:String>
     <sys:String x:Key="OpenLimit">Maksimal {0} file dibuka sekaligus</sys:String>
     <sys:String x:Key="RevealFailed">Gagal membuka Explorer</sys:String>
+
+    <sys:String x:Key="Convert">Konversi</sys:String>
+    <sys:String x:Key="ConvertTitle">Konversi</sys:String>
+    <sys:String x:Key="ConvertDropHint">Lepaskan file PDF, DOC, atau DOCX di sini</sys:String>
+    <sys:String x:Key="ConvertChooseFiles">Pilih file</sys:String>
+    <sys:String x:Key="ConvertLegacyDocNote">DOC dikonversi ke PDF. Dokumen legacy kompleks bisa kehilangan format.</sys:String>
+    <sys:String x:Key="ConvertLegacyDocWarning">Konten DOC legacy mungkin dihilangkan atau berubah.</sys:String>
+    <sys:String x:Key="ConvertEmpty">Belum ada file di antrean</sys:String>
+    <sys:String x:Key="ConvertAll">Konversi semua</sys:String>
+    <sys:String x:Key="ConvertSelected">Konversi pilihan</sys:String>
+    <sys:String x:Key="ConvertSelectFile">Pilih untuk dikonversi</sys:String>
+    <sys:String x:Key="ConvertCancel">Batal</sys:String>
+    <sys:String x:Key="ConvertFileFilter">PDF|*.pdf|Word|*.doc;*.docx|Semua file|*.*</sys:String>
+    <sys:String x:Key="ConvertStatusPending">Menunggu</sys:String>
+    <sys:String x:Key="ConvertStatusDone">Selesai</sys:String>
+    <sys:String x:Key="ConvertStatusDoneWithWarnings">Selesai dengan peringatan</sys:String>
+    <sys:String x:Key="ConvertAddedFiles">{0} file ditambahkan</sys:String>
+    <sys:String x:Key="ConvertNoSupportedFiles">Tidak ada file baru yang didukung</sys:String>
+    <sys:String x:Key="ConvertNothingToDo">Tidak ada file yang menunggu konversi</sys:String>
+    <sys:String x:Key="ConvertNoSelection">Pilih minimal satu file untuk dikonversi</sys:String>
+    <sys:String x:Key="ConvertStarted">Mengonversi file...</sys:String>
+    <sys:String x:Key="ConvertSummary">{0} berhasil, {1} gagal</sys:String>
+    <sys:String x:Key="ConvertToPdf">Konversi ke PDF</sys:String>
+    <sys:String x:Key="ConvertToDocx">Konversi ke DOCX</sys:String>
+    <sys:String x:Key="ConvertingTo">Mengonversi ke {0}...</sys:String>
+    <sys:String x:Key="ConvertedTo">Dikonversi ke {0}</sys:String>
+    <sys:String x:Key="ConvertFailed">Konversi gagal</sys:String>
+    <sys:String x:Key="ConvertScannedPdf">PDF ini tidak memiliki lapisan teks (hasil pindai)</sys:String>
+    <sys:String x:Key="ConvertTimeout">Konversi melebihi waktu</sys:String>
+    <sys:String x:Key="ConvertCancelled">Konversi dibatalkan</sys:String>
+    <sys:String x:Key="ConvertBusy">Konversi lain sedang berjalan</sys:String>
 
     <sys:String x:Key="Open">Buka</sys:String>
     <sys:String x:Key="RevealInExplorer">Tampilkan di Explorer</sys:String>

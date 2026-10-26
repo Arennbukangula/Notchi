@@ -21,4 +21,8 @@
     <Resource Include="assets\icon.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="OfficeIMO.Word.Pdf" Version="3.5.2" />
+  </ItemGroup>
+
 </Project>

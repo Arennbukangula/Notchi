@@ -97,6 +97,8 @@ namespace WindowsNotch
         private static readonly SolidColorBrush WarningBrush = FrozenBrush(0xFF, 0xB0, 0x20);
         private static readonly SolidColorBrush DangerBrush = FrozenBrush(0xFF, 0x45, 0x3A);
         private static readonly SolidColorBrush BatteryBrush = FrozenBrush(0x4C, 0xD9, 0x64);
+        private static readonly SolidColorBrush DropZoneActiveBrush =
+            FrozenBrush(Color.FromArgb(0x38, 0x3D, 0x7E, 0xFF));
 
         private static readonly Color IdleAccent = Color.FromRgb(0x6C, 0x7B, 0xFF);
         private static readonly Color DropAccent = Color.FromRgb(0x3D, 0x7E, 0xFF);
@@ -124,9 +126,11 @@ namespace WindowsNotch
         private bool _featurePanelOpen;
         private bool _keepNotchOpenForAux;
         private bool _isFileDragOver;
+        private FileDropDestination _fileDropDestination = FileDropDestination.Path;
         private NoteWindow? _noteWindow;
         private SettingsWindow? _settingsWindow;
         private DropShelfWindow? _dropShelf;
+        private ConversionWindow? _conversionWindow;
         private readonly List<string> _droppedPaths = new();
         private readonly GlobalHotkeyService _hotkey = new();
         private bool _isHidden;
@@ -143,11 +147,19 @@ namespace WindowsNotch
             RightCenter
         }
 
+        private enum FileDropDestination
+        {
+            Path,
+            Convert
+        }
+
         private bool IsSideAnchor => _anchor is NotchAnchor.LeftCenter or NotchAnchor.RightCenter;
         private bool IsNoteOpen => _noteWindow is { IsVisible: true };
         private bool IsSettingsOpen => _settingsWindow is { IsVisible: true };
         private bool IsShelfOpen => _dropShelf is { IsVisible: true };
-        private bool IsAuxOpen => IsNoteOpen || IsSettingsOpen || IsShelfOpen;
+        private bool IsConversionOpen => _conversionWindow is { IsVisible: true };
+        private bool IsAuxOpen =>
+            IsNoteOpen || IsSettingsOpen || IsShelfOpen || IsConversionOpen;
 
         private (double Width, double Height) CollapsedSize => IsSideAnchor
             ? (SideCollapsedWidth, SideCollapsedHeight)
@@ -250,6 +262,7 @@ namespace WindowsNotch
             FeaturePopup.Opened += OnFeaturePopupOpened;
             FeaturePopup.Closed += OnFeaturePopupClosed;
             FileButton.Click += OnFileButtonClick;
+            ConvertButton.Click += OnConvertButtonClick;
             NoteButton.Click += OnNoteButtonClick;
             SettingsButton.Click += OnSettingsButtonClick;
             ExitButton.Click += (s, e) => Application.Current.Shutdown();
@@ -278,6 +291,8 @@ namespace WindowsNotch
             {
                 UpdateNotchShape(e.NewSize);
                 UpdateFeatureButtonPosition(e.NewSize.Width, e.NewSize.Height);
+
+                if (_isFileDragOver) UpdateDropIndicatorLayout();
 
                 // Setelah animasi collapse selesai: window snap ke ukuran pill
                 // agar tidak ada area transparan yang menelan klik
@@ -443,6 +458,13 @@ namespace WindowsNotch
             ShowFileShelf();
         }
 
+        private void OnConvertButtonClick(object sender, RoutedEventArgs e)
+        {
+            _keepNotchOpenForAux = true;
+            FeaturePopup.IsOpen = false;
+            ShowConversionWindow();
+        }
+
         private void OnNoteButtonClick(object sender, RoutedEventArgs e)
         {
             _keepNotchOpenForAux = true;
@@ -527,6 +549,40 @@ namespace WindowsNotch
             _settingsWindow = settings;
             settings.Show();
             settings.Activate();
+        }
+
+        private void ShowConversionWindow(IEnumerable<string>? paths = null)
+        {
+            if (_conversionWindow is { IsVisible: true })
+            {
+                if (paths != null) _conversionWindow.AddDroppedFiles(paths);
+                _conversionWindow.Activate();
+                return;
+            }
+
+            var conversion = new ConversionWindow();
+            PositionAuxWindow(conversion);
+
+            conversion.Closed += (s, e) =>
+            {
+                _conversionWindow = null;
+
+                if (conversion.ClosedByUser && !IsSideAnchor)
+                {
+                    OpenFeaturePanel();
+                    return;
+                }
+
+                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+
+                _collapseTimer.Stop();
+                CollapseNotch();
+            };
+
+            _conversionWindow = conversion;
+            if (paths != null) conversion.AddDroppedFiles(paths);
+            conversion.Show();
+            conversion.Activate();
         }
 
         private void PositionAuxWindow(Window window)
@@ -1310,6 +1366,8 @@ namespace WindowsNotch
 
             _isFileDragOver = true;
             _collapseTimer.Stop();
+            UpdateFileDropDestination(e);
+            UpdateDropIndicatorLayout();
             DropIndicator.Visibility = Visibility.Visible;
             ExpandNotch();
             UpdateAccent();
@@ -1335,6 +1393,8 @@ namespace WindowsNotch
             }
 
             ExpandNotch();
+            UpdateFileDropDestination(e);
+            UpdateDropIndicatorLayout();
 
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
@@ -1345,6 +1405,8 @@ namespace WindowsNotch
             if (!_isFileDragOver) return;
 
             _isFileDragOver = false;
+            _fileDropDestination = FileDropDestination.Path;
+            ApplyFileDropDestinationVisual();
             DropIndicator.Visibility = Visibility.Collapsed;
             UpdateAccent();
 
@@ -1363,13 +1425,73 @@ namespace WindowsNotch
                 return;
             }
 
+            bool toConversion = IsDropToConversion(e);
+
             _isFileDragOver = false;
+            _fileDropDestination = toConversion
+                ? FileDropDestination.Convert
+                : FileDropDestination.Path;
+            ApplyFileDropDestinationVisual();
             DropIndicator.Visibility = Visibility.Collapsed;
             UpdateAccent();
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
 
+            if (toConversion)
+            {
+                _keepNotchOpenForAux = true;
+                FeaturePopup.IsOpen = false;
+                ShowConversionWindow(paths);
+                return;
+            }
+
             ShowDropShelf(paths);
+        }
+
+        private bool IsDropToConversion(DragEventArgs e)
+        {
+            double width = PillHost.ActualWidth > 0
+                ? PillHost.ActualWidth
+                : PillHost.Width;
+
+            return width > 0 && e.GetPosition(PillHost).X >= width / 2;
+        }
+
+        private void UpdateFileDropDestination(DragEventArgs e)
+        {
+            _fileDropDestination = IsDropToConversion(e)
+                ? FileDropDestination.Convert
+                : FileDropDestination.Path;
+            ApplyFileDropDestinationVisual();
+        }
+
+        private void ApplyFileDropDestinationVisual()
+        {
+            DropPathZone.Background = _fileDropDestination == FileDropDestination.Path
+                ? DropZoneActiveBrush
+                : Brushes.Transparent;
+            DropConvertZone.Background = _fileDropDestination == FileDropDestination.Convert
+                ? DropZoneActiveBrush
+                : Brushes.Transparent;
+        }
+
+        private void UpdateDropIndicatorLayout()
+        {
+            bool showLabels = PillHost.ActualWidth >= 160;
+
+            DropPathLabel.Visibility = showLabels
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            DropConvertLabel.Visibility = showLabels
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            DropPathIcon.Margin = showLabels
+                ? new Thickness(0, 0, 6, 0)
+                : new Thickness(0);
+            DropConvertIcon.Margin = showLabels
+                ? new Thickness(0, 0, 6, 0)
+                : new Thickness(0);
         }
 
         private static bool HasFileDrop(IDataObject data)

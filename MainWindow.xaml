@@ -569,18 +569,58 @@
                 BorderThickness="1.5" CornerRadius="18"
                 IsHitTestVisible="False" Panel.ZIndex="5"
                 Visibility="Collapsed">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                <Viewbox Width="12" Height="12" Margin="0,0,6,0">
-                    <Path Data="M1.5,4 H6 L7.2,5.2 H11.5 V10.5 H1.5 Z"
-                          Stroke="#F5F5F7" StrokeThickness="1.3"
-                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          StrokeLineJoin="Round" Fill="Transparent"/>
-                </Viewbox>
-                <TextBlock Text="{DynamicResource DropFilesHere}" Foreground="{StaticResource TextPrimaryBrush}"
-                           FontSize="10" FontWeight="SemiBold"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="DropPathZone" Background="Transparent"
+                        CornerRadius="17,0,0,17">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <Viewbox x:Name="DropPathIcon" Width="12" Height="12"
+                                 Margin="0,0,6,0">
+                            <Path Data="M1.5,4 H6 L7.2,5.2 H11.5 V10.5 H1.5 Z"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                        <TextBlock x:Name="DropPathLabel"
+                                   Text="{DynamicResource DropToPath}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="9.5" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="DropConvertZone" Grid.Column="1"
+                        Background="Transparent" CornerRadius="0,17,17,0">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <Viewbox x:Name="DropConvertIcon" Width="12" Height="12"
+                                 Margin="0,0,6,0">
+                            <Path Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H8 M4.8,9.5 H9.4 M7.2,7.3 L9.4,9.5 L7.2,11.7"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                        <TextBlock x:Name="DropConvertLabel"
+                                   Text="{DynamicResource DropToConvert}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="9.5" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.ColumnSpan="2" Width="1" Margin="0,9"
+                        HorizontalAlignment="Center" Background="#3A3A3E"
+                        Opacity="0.8"/>
+            </Grid>
         </Border>
         </Grid>
 
@@ -627,6 +667,26 @@
                                        Foreground="{StaticResource TextPrimaryBrush}" FontSize="11.5"
                                        FontWeight="SemiBold" Margin="8,0,0,0"
                                        VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Button x:Name="ConvertButton" MinWidth="96" Padding="12,6"
+                            Margin="0,2,0,0"
+                            Style="{StaticResource PanelActionButton}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="13"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Viewbox Grid.Column="0" Width="13" Height="13"
+                                     HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <Path Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H8 M4,9 H7"
+                                      Stroke="#F5F5F7" StrokeThickness="1.3"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"/>
+                            </Viewbox>
+                            <TextBlock Grid.Column="1" Text="{DynamicResource Convert}" Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontSize="11.5" FontWeight="SemiBold"
+                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
                     <Button x:Name="NoteButton" MinWidth="96" Padding="12,6"

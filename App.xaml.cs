@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using WindowsNotch.Conversion;
 
 namespace WindowsNotch;
 
@@ -25,6 +26,19 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        string[] arguments = Environment.GetCommandLineArgs();
+
+        if (arguments.Length >= 2 &&
+            string.Equals(arguments[1], "--convert", StringComparison.OrdinalIgnoreCase))
+        {
+            int exitCode = arguments.Length >= 3
+                ? ConversionCli.Run(arguments[2])
+                : 2;
+
+            Shutdown(exitCode);
+            return;
+        }
 
         bool isFirstInstance = true;
 
