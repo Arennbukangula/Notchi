@@ -101,17 +101,6 @@ Developer: **risuunava**
   <a href="https://github.com/risuunava/Notchi"><img src="https://img.shields.io/badge/Repository-Notchi-3D7EFF?style=for-the-badge&logo=github&logoColor=white" alt="Repository" /></a>
 </p>
 
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
-
-- Authors and reviewers: [risuunava](https://github.com/risuunava) and contributors listed in [CONTRIBUTORS.md](CONTRIBUTORS.md)
-- Approvers: [risuunava](https://github.com/risuunava)
-
-### Privacy policy
-
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
-
 ## License
 
 Notchi is released under the Apache License 2.0. See [LICENSE](LICENSE) for details.
