@@ -28,6 +28,7 @@
     <sys:String x:Key="DropFilesHere">Drop files here</sys:String>
     <sys:String x:Key="DropToPath">Drop to path</sys:String>
     <sys:String x:Key="DropToConvert">Drop to convert</sys:String>
+    <sys:String x:Key="DropToConvertDownloads">Convert to Downloads</sys:String>
 
     <sys:String x:Key="NotePlaceholder">Write a note...</sys:String>
     <sys:String x:Key="NewNote">New note</sys:String>
@@ -76,6 +77,9 @@
     <sys:String x:Key="ConvertTimeout">Conversion timed out</sys:String>
     <sys:String x:Key="ConvertCancelled">Conversion cancelled</sys:String>
     <sys:String x:Key="ConvertBusy">A conversion is already running</sys:String>
+    <sys:String x:Key="ConvertDownloadProgress">Converting {0} ({1}/{2})...</sys:String>
+    <sys:String x:Key="ConvertSavedToDownloads">{0} file(s) saved to Downloads</sys:String>
+    <sys:String x:Key="ConvertSavedPartial">{0} file(s) saved to Downloads, {1} failed</sys:String>
 
     <sys:String x:Key="Open">Open</sys:String>
     <sys:String x:Key="RevealInExplorer">Show in Explorer</sys:String>

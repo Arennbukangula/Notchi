@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 
 namespace WindowsNotch.Conversion
 {
@@ -17,6 +19,11 @@ namespace WindowsNotch.Conversion
         {
             try
             {
+                CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+                CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+                Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+                Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
+
                 ConversionJobFile? job = JsonSerializer.Deserialize<ConversionJobFile>(
                     File.ReadAllText(jobPath),
                     JsonOptions);

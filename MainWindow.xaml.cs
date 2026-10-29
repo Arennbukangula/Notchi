@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -12,6 +13,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using WindowsNotch.Conversion;
 
 namespace WindowsNotch
 {
@@ -115,6 +117,7 @@ namespace WindowsNotch
         private readonly DispatcherTimer _collapseTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
         private readonly DispatcherTimer _featureHoverTimer = new() { Interval = TimeSpan.FromMilliseconds(220) };
         private readonly DispatcherTimer _mediaTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+        private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
         private readonly SmtcService _smtc = new();
         private readonly SystemStatusService _systemStatus = new();
         private AppSettings _settings = new();
@@ -130,11 +133,13 @@ namespace WindowsNotch
         private NoteWindow? _noteWindow;
         private SettingsWindow? _settingsWindow;
         private DropShelfWindow? _dropShelf;
-        private ConversionWindow? _conversionWindow;
+        private readonly QuickConversionService _quickConversion = new();
         private readonly List<string> _droppedPaths = new();
         private readonly GlobalHotkeyService _hotkey = new();
         private bool _isHidden;
         private int _animationVersion;
+        private bool _isConverting;
+        private CancellationTokenSource? _quickConversionCts;
         private Point _dragStartCursor;
         private Point _dragGrab;
         private NotchAnchor _anchor = NotchAnchor.TopCenter;
@@ -157,9 +162,7 @@ namespace WindowsNotch
         private bool IsNoteOpen => _noteWindow is { IsVisible: true };
         private bool IsSettingsOpen => _settingsWindow is { IsVisible: true };
         private bool IsShelfOpen => _dropShelf is { IsVisible: true };
-        private bool IsConversionOpen => _conversionWindow is { IsVisible: true };
-        private bool IsAuxOpen =>
-            IsNoteOpen || IsSettingsOpen || IsShelfOpen || IsConversionOpen;
+        private bool IsAuxOpen => IsNoteOpen || IsSettingsOpen || IsShelfOpen;
 
         private (double Width, double Height) CollapsedSize => IsSideAnchor
             ? (SideCollapsedWidth, SideCollapsedHeight)
@@ -262,7 +265,6 @@ namespace WindowsNotch
             FeaturePopup.Opened += OnFeaturePopupOpened;
             FeaturePopup.Closed += OnFeaturePopupClosed;
             FileButton.Click += OnFileButtonClick;
-            ConvertButton.Click += OnConvertButtonClick;
             NoteButton.Click += OnNoteButtonClick;
             SettingsButton.Click += OnSettingsButtonClick;
             ExitButton.Click += (s, e) => Application.Current.Shutdown();
@@ -318,6 +320,12 @@ namespace WindowsNotch
                 _hotkey.Initialize(this);
                 _hotkey.HotkeyPressed += (_, _) => ToggleNotchiVisibility();
                 _hotkey.Register(_settings.HotkeyModifiers, _settings.HotkeyKey);
+            };
+
+            _statusTimer.Tick += (s, e) =>
+            {
+                _statusTimer.Stop();
+                StatusPopup.IsOpen = false;
             };
 
             WireMediaControls();
@@ -458,13 +466,6 @@ namespace WindowsNotch
             ShowFileShelf();
         }
 
-        private void OnConvertButtonClick(object sender, RoutedEventArgs e)
-        {
-            _keepNotchOpenForAux = true;
-            FeaturePopup.IsOpen = false;
-            ShowConversionWindow();
-        }
-
         private void OnNoteButtonClick(object sender, RoutedEventArgs e)
         {
             _keepNotchOpenForAux = true;
@@ -549,40 +550,6 @@ namespace WindowsNotch
             _settingsWindow = settings;
             settings.Show();
             settings.Activate();
-        }
-
-        private void ShowConversionWindow(IEnumerable<string>? paths = null)
-        {
-            if (_conversionWindow is { IsVisible: true })
-            {
-                if (paths != null) _conversionWindow.AddDroppedFiles(paths);
-                _conversionWindow.Activate();
-                return;
-            }
-
-            var conversion = new ConversionWindow();
-            PositionAuxWindow(conversion);
-
-            conversion.Closed += (s, e) =>
-            {
-                _conversionWindow = null;
-
-                if (conversion.ClosedByUser && !IsSideAnchor)
-                {
-                    OpenFeaturePanel();
-                    return;
-                }
-
-                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
-
-                _collapseTimer.Stop();
-                CollapseNotch();
-            };
-
-            _conversionWindow = conversion;
-            if (paths != null) conversion.AddDroppedFiles(paths);
-            conversion.Show();
-            conversion.Activate();
         }
 
         private void PositionAuxWindow(Window window)
@@ -1439,9 +1406,7 @@ namespace WindowsNotch
 
             if (toConversion)
             {
-                _keepNotchOpenForAux = true;
-                FeaturePopup.IsOpen = false;
-                ShowConversionWindow(paths);
+                StartQuickConversion(paths);
                 return;
             }
 
@@ -1454,7 +1419,114 @@ namespace WindowsNotch
                 ? PillHost.ActualWidth
                 : PillHost.Width;
 
-            return width > 0 && e.GetPosition(PillHost).X >= width / 2;
+            return width > 0 && e.GetPosition(PillHost).X < width / 2;
+        }
+
+        private async void StartQuickConversion(IEnumerable<string> paths)
+        {
+            if (_isConverting)
+            {
+                ShowStatusPopup(Localization.Get("ConvertBusy"), isError: true);
+                return;
+            }
+
+            string[] supportedPaths = paths
+                .Where(path => File.Exists(path) &&
+                    ConversionFormats.TryGetTarget(path, out _))
+                .ToArray();
+
+            if (supportedPaths.Length == 0)
+            {
+                ShowStatusPopup(
+                    Localization.Get("ConvertNoSupportedFiles"),
+                    isError: true);
+                return;
+            }
+
+            _isConverting = true;
+            var cts = new CancellationTokenSource();
+            _quickConversionCts = cts;
+
+            try
+            {
+                var progress = new Progress<QuickConversionProgress>(item =>
+                {
+                    ShowStatusPopup(
+                        Localization.Format(
+                            "ConvertDownloadProgress",
+                            item.FileName,
+                            item.Index,
+                            item.Total),
+                        isError: false);
+                });
+
+                var outcomes = await _quickConversion.ConvertAsync(
+                    supportedPaths,
+                    progress,
+                    cts.Token);
+
+                int succeeded = outcomes.Count(item => item.Success);
+                int failed = outcomes.Count - succeeded;
+
+                if (succeeded == 0)
+                {
+                    string? error = outcomes
+                        .FirstOrDefault(item => !item.Success)?.Error;
+
+                    ShowStatusPopup(
+                        string.IsNullOrWhiteSpace(error)
+                            ? Localization.Get("ConvertFailed")
+                            : error!,
+                        isError: true);
+                }
+                else if (failed == 0)
+                {
+                    ShowStatusPopup(
+                        Localization.Format("ConvertSavedToDownloads", succeeded),
+                        isError: false);
+                }
+                else
+                {
+                    ShowStatusPopup(
+                        Localization.Format(
+                            "ConvertSavedPartial",
+                            succeeded,
+                            failed),
+                        isError: true);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception exception)
+            {
+                CrashLogger.Log("MainWindow.QuickConversion", exception);
+                ShowStatusPopup(Localization.Get("ConvertFailed"), isError: true);
+            }
+            finally
+            {
+                if (ReferenceEquals(_quickConversionCts, cts))
+                {
+                    _quickConversionCts = null;
+                }
+
+                cts.Dispose();
+                _isConverting = false;
+            }
+        }
+
+        private void ShowStatusPopup(string text, bool isError)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            _statusTimer.Stop();
+            StatusPopupText.Text = text;
+            StatusPopupCard.BorderBrush = isError ? DangerBrush : AccentBrush;
+            StatusPopupText.Foreground = isError
+                ? DangerBrush
+                : FrozenBrush(0xF5, 0xF5, 0xF7);
+            StatusPopup.IsOpen = true;
+            _statusTimer.Start();
         }
 
         private void UpdateFileDropDestination(DragEventArgs e)
@@ -1885,6 +1957,9 @@ namespace WindowsNotch
 
         protected override void OnClosed(EventArgs e)
         {
+            _quickConversionCts?.Cancel();
+            _statusTimer.Stop();
+            StatusPopup.IsOpen = false;
             _hotkey.Dispose();
             Localization.LanguageChanged -= OnLanguageChanged;
             _mediaTimer.Stop();

@@ -30,6 +30,7 @@ namespace WindowsNotch.Conversion
             }
             catch (Exception exception)
             {
+                CrashLogger.Log("OfficeImoConverter.Convert", exception);
                 return Failure(exception.Message);
             }
         }
@@ -38,26 +39,82 @@ namespace WindowsNotch.Conversion
             ConversionJobFile job,
             CancellationToken cancellationToken)
         {
-            using WordDocument word = WordDocument.Load(job.InputPath);
+            string? sanitizedPath = null;
 
-            PdfSaveResult result = word.SaveAsPdfResult(
-                job.TempOutputPath,
-                new WordToPdfOptions(),
-                cancellationToken);
-
-            if (!result.Succeeded)
+            try
             {
-                return Failure(
-                    result.Exception?.Message ?? "Word to PDF conversion failed.",
-                    ToMessages(result.Warnings));
-            }
+                string sanitizedDirectory = Path.Combine(
+                    Path.GetTempPath(),
+                    "Notchi",
+                    "convert");
+                Directory.CreateDirectory(sanitizedDirectory);
 
-            return new ConversionResultFile(
-                true,
-                job.TempOutputPath,
-                null,
-                ToMessages(result.Warnings),
-                false);
+                string candidate = Path.Combine(
+                    sanitizedDirectory,
+                    Guid.NewGuid().ToString("N") + ".docx");
+
+                string loadPath = job.InputPath;
+
+                if (DocxSanitizer.TryCreateSanitizedCopy(
+                        job.InputPath,
+                        candidate,
+                        out bool changed))
+                {
+                    if (changed)
+                    {
+                        sanitizedPath = candidate;
+                        loadPath = candidate;
+                    }
+                    else
+                    {
+                        TryDelete(candidate);
+                    }
+                }
+
+                using WordDocument word = WordDocument.Load(loadPath);
+
+                PdfSaveResult result = word.SaveAsPdfResult(
+                    job.TempOutputPath,
+                    new WordToPdfOptions(),
+                    cancellationToken);
+
+                if (!result.Succeeded)
+                {
+                    if (result.Exception != null)
+                    {
+                        CrashLogger.Log("OfficeImoConverter.DocxToPdf", result.Exception);
+                    }
+
+                    return Failure(
+                        result.Exception?.Message ?? "Word to PDF conversion failed.",
+                        ToMessages(result.Warnings));
+                }
+
+                return new ConversionResultFile(
+                    true,
+                    job.TempOutputPath,
+                    null,
+                    ToMessages(result.Warnings),
+                    false);
+            }
+            finally
+            {
+                if (sanitizedPath != null)
+                {
+                    TryDelete(sanitizedPath);
+                }
+            }
+        }
+
+        private static void TryDelete(string path)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch
+            {
+            }
         }
 
         private static ConversionResultFile LegacyDocToPdf(

@@ -28,6 +28,7 @@
     <sys:String x:Key="DropFilesHere">Lepaskan file di sini</sys:String>
     <sys:String x:Key="DropToPath">Ke path</sys:String>
     <sys:String x:Key="DropToConvert">Ke konversi</sys:String>
+    <sys:String x:Key="DropToConvertDownloads">Ke konversi (Downloads)</sys:String>
 
     <sys:String x:Key="NotePlaceholder">Tulis catatan...</sys:String>
     <sys:String x:Key="NewNote">Catatan baru</sys:String>
@@ -76,6 +77,9 @@
     <sys:String x:Key="ConvertTimeout">Konversi melebihi waktu</sys:String>
     <sys:String x:Key="ConvertCancelled">Konversi dibatalkan</sys:String>
     <sys:String x:Key="ConvertBusy">Konversi lain sedang berjalan</sys:String>
+    <sys:String x:Key="ConvertDownloadProgress">Mengonversi {0} ({1}/{2})...</sys:String>
+    <sys:String x:Key="ConvertSavedToDownloads">{0} file tersimpan di Downloads</sys:String>
+    <sys:String x:Key="ConvertSavedPartial">{0} file tersimpan di Downloads, {1} gagal</sys:String>
 
     <sys:String x:Key="Open">Buka</sys:String>
     <sys:String x:Key="RevealInExplorer">Tampilkan di Explorer</sys:String>
