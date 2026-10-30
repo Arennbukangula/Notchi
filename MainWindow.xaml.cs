@@ -704,7 +704,7 @@ namespace WindowsNotch
             var id = (aumid ?? string.Empty).ToLowerInvariant();
 
             if (id.Contains("spotify")) return Color.FromRgb(0x1D, 0xB9, 0x54);
-            if (id.Contains("chrome")) return Color.FromRgb(0x42, 0x85, 0xF4);
+            if (id.Contains("chrome")) return Color.FromRgb(0xEA, 0x43, 0x35);
             if (id.Contains("msedge") || id.Contains("edge")) return Color.FromRgb(0x00, 0x78, 0xD4);
             if (id.Contains("firefox")) return Color.FromRgb(0xFF, 0x71, 0x39);
             if (id.Contains("youtube")) return Color.FromRgb(0xFF, 0x00, 0x00);
