@@ -29,6 +29,9 @@ namespace WindowsNotch
         private bool _isReady;
         private bool _isClosing;
         private bool _userEdited;
+        private bool _isResizing;
+        private Point _resizeStart;
+        private Size _resizeStartSize;
 
         public NoteWindow()
         {
@@ -41,6 +44,11 @@ namespace WindowsNotch
             _saveTimer.Tick += OnSaveTimerTick;
             NoteTextBox.TextChanged += OnNoteTextChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
+
+            ResizeGrip.MouseLeftButtonDown += OnResizeGripMouseLeftButtonDown;
+            ResizeGrip.MouseMove += OnResizeGripMouseMove;
+            ResizeGrip.MouseLeftButtonUp += OnResizeGripMouseLeftButtonUp;
+            ResizeGrip.LostMouseCapture += OnResizeGripLostMouseCapture;
 
             Activated += (s, e) => _isReady = true;
             Deactivated += OnDeactivated;
@@ -72,6 +80,43 @@ namespace WindowsNotch
         {
             ClosedByUser = true;
             RequestClose();
+        }
+
+        private void OnResizeGripMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+
+            _isResizing = true;
+            _resizeStart = e.GetPosition(this);
+            _resizeStartSize = new Size(ActualWidth, ActualHeight);
+            ResizeGrip.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void OnResizeGripMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isResizing || !ResizeGrip.IsMouseCaptured) return;
+
+            Point current = e.GetPosition(this);
+            double width = _resizeStartSize.Width + (current.X - _resizeStart.X);
+            double height = _resizeStartSize.Height + (current.Y - _resizeStart.Y);
+
+            Width = Math.Max(MinWidth, width);
+            Height = Math.Max(MinHeight, height);
+        }
+
+        private void OnResizeGripMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isResizing) return;
+
+            _isResizing = false;
+            ResizeGrip.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+
+        private void OnResizeGripLostMouseCapture(object sender, MouseEventArgs e)
+        {
+            _isResizing = false;
         }
 
         private void OnDeactivated(object? sender, EventArgs e)
