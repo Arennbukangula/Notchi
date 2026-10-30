@@ -206,57 +206,27 @@
             </Setter>
         </Style>
 
-        <!-- Kapsul putih berisi ikon di sisi kanan notch -->
-        <Style x:Key="FeatureIconButton" TargetType="Button">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Focusable" Value="False"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="15" SnapsToDevicePixels="True">
-                            <Image x:Name="IconImage" Source="pack://application:,,,/assets/icon.png"
-                                   Width="18" Height="18" Stretch="Uniform"
-                                   RenderTransformOrigin="0.5,0.5"
-                                   RenderOptions.BitmapScalingMode="HighQuality">
-                                <Image.RenderTransform>
-                                    <RotateTransform x:Name="IconRotate"/>
-                                </Image.RenderTransform>
-                            </Image>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F0F0F0"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#E2E2E2"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Tombol di dalam panel fitur -->
-        <Style x:Key="PanelActionButton" TargetType="Button">
+        <!-- Tombol menu fitur minimalis (ikon saja) -->
+        <Style x:Key="FeatureMenuIconButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="8" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                                CornerRadius="14">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2C2C2E"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3A3A3E"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#3DFFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4"/>
@@ -866,113 +836,120 @@
         </Border>
         </Grid>
 
-        <!-- Kapsul putih berisi icon.png, menempel di sisi kanan notch -->
-        <Button x:Name="FeatureButton" Width="30" Height="30"
-                HorizontalAlignment="Left" VerticalAlignment="Top"
-                Margin="0,5,0,0" Panel.ZIndex="10"
-                Style="{StaticResource FeatureIconButton}"/>
-
-        <!-- Panel fitur yang meluncur ke kanan -->
-        <Popup x:Name="FeaturePopup"
-               PlacementTarget="{Binding ElementName=FeatureButton}"
-               Placement="Right"
-               HorizontalOffset="8"
-               VerticalOffset="-1"
-               AllowsTransparency="True"
-               PopupAnimation="None"
-               StaysOpen="True"
-               Focusable="False">
-            <Border x:Name="FeaturePanelCard" Background="#1C1C1E"
-                    BorderBrush="#2E2E30" BorderThickness="1"
-                    CornerRadius="10" Padding="3">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="12" ShadowDepth="3"
-                                      Opacity="0.35" Color="Black"/>
-                </Border.Effect>
-                <StackPanel>
-                    <Button x:Name="FileButton" MinWidth="96" Padding="12,6"
-                            IsEnabled="False"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M1.5,3 H6 L7.5,4.5 H12.5 V11.5 H1.5 Z"
-                                      Stroke="#F5F5F7" StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round" Fill="Transparent"/>
-                            </Viewbox>
-                            <TextBlock x:Name="FileMenuLabel" Grid.Column="1" Text="{DynamicResource FileTitle}"
-                                       Foreground="{StaticResource TextPrimaryBrush}" FontSize="11.5"
-                                       FontWeight="SemiBold" Margin="8,0,0,0"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button x:Name="NoteButton" MinWidth="96" Padding="12,6"
-                            Margin="0,2,0,0"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H9 M4,9 H9"
-                                      Stroke="#F5F5F7" StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round" Fill="Transparent"/>
-                            </Viewbox>
-                            <TextBlock Grid.Column="1" Text="{DynamicResource Notes}" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontSize="11.5" FontWeight="SemiBold"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button x:Name="SettingsButton" MinWidth="96" Padding="12,6"
-                            Margin="0,2,0,0"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M1,3 H13 M1,7 H13 M1,11 H13 M4,1.5 V4.5 M9,5.5 V8.5 M5,9.5 V12.5"
-                                      Stroke="#F5F5F7" StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                            </Viewbox>
-                            <TextBlock Grid.Column="1" Text="{DynamicResource Settings}" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontSize="11.5" FontWeight="SemiBold"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button x:Name="ExitButton" MinWidth="96" Padding="12,6"
-                            Margin="0,2,0,0"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M6,1 L6,6 M2.8,2.8 A5,5 0 1 0 9.2,2.8"
-                                      Stroke="#F5F5F7" StrokeThickness="1.4"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      Fill="Transparent"/>
-                            </Viewbox>
-                            <TextBlock Grid.Column="1" Text="{DynamicResource Exit}" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontSize="11.5" FontWeight="SemiBold"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                </StackPanel>
-            </Border>
-        </Popup>
+        <!-- Bar menu fitur minimalis di bawah notch -->
+        <Border x:Name="FeatureMenuBar"
+                Height="34"
+                CornerRadius="17"
+                BorderBrush="#38FFFFFF"
+                BorderThickness="0.8"
+                Padding="6,2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,104,0,0"
+                Opacity="0"
+                Visibility="Collapsed">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#F5070708" Offset="0"/>
+                    <GradientStop Color="#F508080B" Offset="0.45"/>
+                    <GradientStop Color="#ED0B0914" Offset="0.75"/>
+                    <GradientStop Color="#E6110E22" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2"
+                                  Opacity="0.45" Color="Black"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="NotchiButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        ToolTip="Notchi">
+                    <Border Width="20" Height="20" CornerRadius="10"
+                            Background="#FFFFFF"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Source="pack://application:,,,/assets/icon.ico"
+                               Width="13" Height="13"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="NotchiIconRotate"/>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Border>
+                </Button>
+                <Button x:Name="FileButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource FileTitle}">
+                    <Border x:Name="FileIconBorder"
+                            Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path x:Name="FileIconPath"
+                                  Data="M1.5,3 H5.5 L7,4.5 H12.5 V11.5 H1.5 Z"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+                <Button x:Name="NoteButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource Notes}">
+                    <Border x:Name="NoteIconBorder"
+                            Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path x:Name="NoteIconPath"
+                                  Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H9 M4,9 H9"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+                <Button x:Name="SettingsButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource Settings}">
+                    <Border x:Name="SettingsIconBorder"
+                            Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path x:Name="SettingsIconPath"
+                                  Data="F0 M12,15.5 A3.5,3.5 0 1 0 12,8.5 A3.5,3.5 0 0 0 12,15.5 Z M19.43,12.98 C19.47,12.66 19.5,12.34 19.5,12 C19.5,11.66 19.47,11.34 19.43,11.02 L21.54,9.37 C21.73,9.22 21.78,8.95 21.66,8.73 L19.66,5.27 C19.54,5.05 19.27,4.96 19.05,5.05 L16.56,6.05 C16.04,5.65 15.48,5.32 14.87,5.07 L14.49,2.42 C14.46,2.18 14.25,2 14,2 L10,2 C9.75,2 9.54,2.18 9.51,2.42 L9.13,5.07 C8.52,5.32 7.96,5.66 7.44,6.05 L4.95,5.05 C4.73,4.96 4.46,5.05 4.34,5.27 L2.34,8.73 C2.21,8.95 2.27,9.22 2.46,9.37 L4.57,11.02 C4.53,11.34 4.5,11.67 4.5,12 C4.5,12.33 4.53,12.66 4.57,12.98 L2.46,14.63 C2.27,14.78 2.21,15.05 2.34,15.27 L4.34,18.73 C4.46,18.95 4.73,19.03 4.95,18.95 L7.44,17.95 C7.96,18.35 8.52,18.68 9.13,18.93 L9.51,21.58 C9.54,21.82 9.75,22 10,22 L14,22 C14.25,22 14.46,21.82 14.49,21.58 L14.87,18.93 C15.48,18.68 16.04,18.34 16.56,17.95 L19.05,18.95 C19.27,19.04 19.54,18.95 19.66,18.73 L21.66,15.27 C21.78,15.05 21.73,14.78 21.54,14.63 L19.43,12.98 Z"
+                                  Fill="#F5F5F7"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+                <Button x:Name="ExitButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource Exit}">
+                    <Border Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M6,1 L6,6 M2.8,2.8 A5,5 0 1 0 9.2,2.8"
+                                  Stroke="#F5F5F7" StrokeThickness="1.4"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Fill="Transparent"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+            </StackPanel>
+        </Border>
 
         <Popup x:Name="StatusPopup"
                PlacementTarget="{Binding ElementName=PillHost}"

@@ -34,15 +34,9 @@ namespace WindowsNotch
         private const double SideExpandedWidth = 300;
         private const double SideExpandedHeight = 107;
         private const double SideCornerRadius = 20;
-        private const double SideFeatureInset =
-            (SideCollapsedWidth - FeatureButtonWidth) / 2;
-
-        private const double FeatureButtonWidth = 30;
-        private const double FeatureButtonTop = 5;
-        private const double FeatureGap = 8;
-        private const double FeatureDecorationWidth = FeatureGap + FeatureButtonWidth;
-        private const double FeaturePanelOpenOffset = 8;
-        private const double FeaturePanelStartOffset = -6;
+        private const double FeatureBarHeight = 34;
+        private const double FeatureBarGap = 4;
+        private const double FeatureBarExtraHeight = FeatureBarGap + FeatureBarHeight + 10;
 
         private static readonly Duration PillPhaseDuration = new(TimeSpan.FromSeconds(0.16));
         private static readonly Duration IdlePageDuration = new(TimeSpan.FromMilliseconds(260));
@@ -121,8 +115,7 @@ namespace WindowsNotch
         private static readonly Color BaseOuterColor = Color.FromArgb(0xE6, 0x11, 0x0E, 0x22);
 
         private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
-        private readonly DispatcherTimer _collapseTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
-        private readonly DispatcherTimer _featureHoverTimer = new() { Interval = TimeSpan.FromMilliseconds(220) };
+        private readonly DispatcherTimer _collapseTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
         private readonly DispatcherTimer _mediaTimer = new() { Interval = TimeSpan.FromSeconds(1) };
         private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
         private readonly SmtcService _smtc = new();
@@ -135,8 +128,6 @@ namespace WindowsNotch
         private bool _isExpanded;
         private bool _isDragging;
         private bool _dragMoved;
-        private bool _featurePanelOpen;
-        private bool _keepNotchOpenForAux;
         private bool _isFileDragOver;
         private FileDropDestination _fileDropDestination = FileDropDestination.Path;
         private NoteWindow? _noteWindow;
@@ -247,60 +238,43 @@ namespace WindowsNotch
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
             PillHost.MouseEnter += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen || IsAuxOpen || _isFileDragOver) return;
+                if (_isDragging || IsAuxOpen || _isFileDragOver) return;
                 _collapseTimer.Stop();
                 ExpandNotch();
             };
             PillHost.MouseLeave += (s, e) =>
             {
-                if (_isDragging || _featurePanelOpen || IsAuxOpen || _isFileDragOver) return;
+                if (_isDragging || IsAuxOpen || _isFileDragOver) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
             _collapseTimer.Tick += (s, e) =>
             {
                 _collapseTimer.Stop();
-                if (!_isDragging && !_featurePanelOpen && !IsAuxOpen &&
-                    !_isFileDragOver)
+                if (!_isDragging && !IsAuxOpen && !_isFileDragOver &&
+                    !PillHost.IsMouseOver && !FeatureMenuBar.IsMouseOver)
                 {
                     CollapseNotch();
                 }
             };
-            // Kapsul fitur: menu terbuka saat kursor hover, tertutup saat kursor pergi
-            FeatureButton.MouseEnter += (s, e) =>
+
+            // Bar menu fitur di bawah notch
+            FeatureMenuBar.MouseEnter += (s, e) =>
             {
                 _collapseTimer.Stop();
-                _featureHoverTimer.Stop();
-                OpenFeaturePanel();
             };
-            FeatureButton.MouseLeave += (s, e) =>
+            FeatureMenuBar.MouseLeave += (s, e) =>
             {
-                _collapseTimer.Stop();
-                _featureHoverTimer.Stop();
-                _featureHoverTimer.Start();
-            };
-
-            // Beri jeda singkat agar kursor bisa menyeberang dari ikon ke panel
-            FeaturePanelCard.MouseEnter += (s, e) => _featureHoverTimer.Stop();
-            FeaturePanelCard.MouseLeave += (s, e) =>
-            {
-                _featureHoverTimer.Stop();
-                _featureHoverTimer.Start();
-            };
-            _featureHoverTimer.Tick += (s, e) =>
-            {
-                _featureHoverTimer.Stop();
-                if (FeatureButton.IsMouseOver || FeaturePanelCard.IsMouseOver) return;
-
-                if (FeaturePopup.IsOpen) FeaturePopup.IsOpen = false;
-
                 if (_isDragging || IsAuxOpen || _isFileDragOver) return;
                 _collapseTimer.Stop();
                 _collapseTimer.Start();
             };
 
-            FeaturePopup.Opened += OnFeaturePopupOpened;
-            FeaturePopup.Closed += OnFeaturePopupClosed;
+            NotchiButton.Click += (s, e) =>
+            {
+                AnimateNotchiIcon();
+                ShowStatusPopup("Notchi v1.1.0", isError: false);
+            };
             FileButton.Click += OnFileButtonClick;
             NoteButton.Click += OnNoteButtonClick;
             SettingsButton.Click += OnSettingsButtonClick;
@@ -326,7 +300,7 @@ namespace WindowsNotch
                 if (!_isDragging) return;
                 _isDragging = false;
                 PillHost.Cursor = Cursors.Hand;
-                UpdateFeatureButtonVisibility();
+                UpdateFeatureBarVisibility();
                 UpdateNotchShape(PillHost.RenderSize);
             };
 
@@ -334,7 +308,7 @@ namespace WindowsNotch
             PillHost.SizeChanged += (s, e) =>
             {
                 UpdateNotchShape(e.NewSize);
-                UpdateFeatureButtonPosition(e.NewSize.Width, e.NewSize.Height);
+                UpdateFeatureBarPosition(e.NewSize.Width, e.NewSize.Height);
 
                 if (_isFileDragOver) UpdateDropIndicatorLayout();
 
@@ -433,124 +407,170 @@ namespace WindowsNotch
             _ = _smtc.SeekAsync(TimeSpan.FromSeconds(LastMediaProgressSlider.Value));
         }
 
-        // ===================== Panel Fitur =====================
+        // ===================== Bar Menu Fitur =====================
 
-        private double FeaturePanelDirection =>
-            _anchor == NotchAnchor.RightCenter ? -1 : 1;
-
-        private RotateTransform? FeatureIconRotate =>
-            FeatureButton.Template?.FindName("IconRotate", FeatureButton) as RotateTransform;
-
-        // Ikon berputar penuh ke kanan saat menu dibuka, dan kembali ke kiri saat ditutup
-        private void AnimateFeatureIcon(bool open)
+        private void AnimateNotchiIcon()
         {
-            if (FeatureIconRotate is not RotateTransform rotate) return;
-
-            double from = rotate.Angle;
-            double to = open ? 360 : 0;
-            if (Math.Abs(to - from) < 0.01) return;
-
-            rotate.BeginAnimation(RotateTransform.AngleProperty, null);
-
-            rotate.BeginAnimation(RotateTransform.AngleProperty,
-                new DoubleAnimation(from, to, new Duration(TimeSpan.FromSeconds(0.18)))
-                {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                });
-        }
-
-        private void OpenFeaturePanel()
-        {
-            if (_featurePanelOpen) return;
-
-            _featurePanelOpen = true;
-            _collapseTimer.Stop();
-
-            AnimateFeatureIcon(open: true);
-
-            // Saat notch menempel kanan layar, panel dibuka ke kiri agar tetap terlihat
-            FeaturePopup.Placement = _anchor == NotchAnchor.RightCenter
-                ? PlacementMode.Left
-                : PlacementMode.Right;
-
-            FeaturePopup.BeginAnimation(Popup.HorizontalOffsetProperty, null);
-            FeaturePopup.HorizontalOffset = FeaturePanelDirection * FeaturePanelStartOffset;
-            FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty, null);
-            FeaturePanelCard.Opacity = 0;
-
-            FeaturePopup.IsOpen = true;
-        }
-
-        private void OnFeaturePopupOpened(object? sender, EventArgs e)
-        {
-            var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-            var duration = new Duration(TimeSpan.FromSeconds(0.2));
-
-            // Slide dari balik ikon + fade-in
-            FeaturePopup.BeginAnimation(Popup.HorizontalOffsetProperty,
-                new DoubleAnimation(FeaturePanelDirection * FeaturePanelOpenOffset, duration)
-                {
-                    EasingFunction = easing
-                });
-            FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(1, duration) { EasingFunction = easing });
-
-            // Panel tidak boleh merebut fokus aplikasi lain
-            if (PresentationSource.FromVisual(FeaturePanelCard) is HwndSource source)
+            var anim = new DoubleAnimation(0, 360, new Duration(TimeSpan.FromMilliseconds(400)))
             {
-                int exStyle = GetWindowLong(source.Handle, GwlExStyle);
-                SetWindowLong(source.Handle, GwlExStyle, exStyle | WsExNoActivate | WsExToolWindow);
-            }
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            NotchiIconRotate.BeginAnimation(RotateTransform.AngleProperty, anim);
         }
 
-        private void OnFeaturePopupClosed(object? sender, EventArgs e)
+        private void ShowFeatureBar()
         {
-            _featurePanelOpen = false;
+            if (_isDragging) return;
 
-            AnimateFeatureIcon(open: false);
+            UpdateFeatureButtonStates();
 
-            FeaturePopup.BeginAnimation(Popup.HorizontalOffsetProperty, null);
-            FeaturePopup.HorizontalOffset = FeaturePanelDirection * FeaturePanelOpenOffset;
-            FeaturePanelCard.BeginAnimation(UIElement.OpacityProperty, null);
-            FeaturePanelCard.Opacity = 1;
+            FeatureMenuBar.Visibility = Visibility.Visible;
+            FeatureMenuBar.IsHitTestVisible = true;
 
-            if (_keepNotchOpenForAux)
+            var fadeAnim = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(180)))
             {
-                _keepNotchOpenForAux = false;
+                BeginTime = TimeSpan.FromMilliseconds(80),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
+        }
+
+        private void HideFeatureBar(bool immediate = false)
+        {
+            if (immediate)
+            {
+                FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, null);
+                FeatureMenuBar.Opacity = 0;
+                FeatureMenuBar.Visibility = Visibility.Collapsed;
+                FeatureMenuBar.IsHitTestVisible = false;
                 return;
             }
 
-            if (IsAuxOpen) return;
-            if (_isDragging || _isFileDragOver) return;
-            if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+            FeatureMenuBar.IsHitTestVisible = false;
+            var fadeAnim = new DoubleAnimation(FeatureMenuBar.Opacity, 0, new Duration(TimeSpan.FromMilliseconds(120)))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+            fadeAnim.Completed += (s, e) =>
+            {
+                if (!_isExpanded)
+                {
+                    FeatureMenuBar.Visibility = Visibility.Collapsed;
+                }
+            };
+            FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
+        }
 
-            _collapseTimer.Stop();
-            CollapseNotch();
+        private static readonly SolidColorBrush ActiveFeatureBgBrush = CreateFrozenBrush(0xFF, 0xFF, 0xFF);
+        private static readonly SolidColorBrush ActiveFeatureDarkBrush = CreateFrozenBrush(0x12, 0x12, 0x14);
+        private static readonly SolidColorBrush InactiveFeatureLightBrush = CreateFrozenBrush(0xF5, 0xF5, 0xF7);
+
+        private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+            brush.Freeze();
+            return brush;
+        }
+
+        private void UpdateFeatureButtonStates()
+        {
+            bool isShelfActive = _dropShelf is { IsVisible: true };
+            FileIconBorder.Background = isShelfActive ? ActiveFeatureBgBrush : Brushes.Transparent;
+            FileIconPath.Stroke = isShelfActive ? ActiveFeatureDarkBrush : InactiveFeatureLightBrush;
+
+            bool isNoteActive = _noteWindow is { IsVisible: true };
+            NoteIconBorder.Background = isNoteActive ? ActiveFeatureBgBrush : Brushes.Transparent;
+            NoteIconPath.Stroke = isNoteActive ? ActiveFeatureDarkBrush : InactiveFeatureLightBrush;
+
+            bool isSettingsActive = _settingsWindow is { IsVisible: true };
+            SettingsIconBorder.Background = isSettingsActive ? ActiveFeatureBgBrush : Brushes.Transparent;
+            SettingsIconPath.Fill = isSettingsActive ? ActiveFeatureDarkBrush : InactiveFeatureLightBrush;
         }
 
         private void OnFileButtonClick(object sender, RoutedEventArgs e)
         {
-            _keepNotchOpenForAux = true;
-            FeaturePopup.IsOpen = false;
+            if (_dropShelf is { IsVisible: true })
+            {
+                _dropShelf.Close();
+                return;
+            }
+
             ShowFileShelf();
         }
 
         private void OnNoteButtonClick(object sender, RoutedEventArgs e)
         {
-            _keepNotchOpenForAux = true;
-            FeaturePopup.IsOpen = false;
+            if (_noteWindow is { IsVisible: true })
+            {
+                _noteWindow.Close();
+                return;
+            }
+
             ShowNoteWindow();
         }
 
         private void OnSettingsButtonClick(object sender, RoutedEventArgs e)
         {
-            _keepNotchOpenForAux = true;
-            FeaturePopup.IsOpen = false;
+            if (_settingsWindow is { IsVisible: true })
+            {
+                _settingsWindow.Close();
+                return;
+            }
+
             ShowSettingsWindow();
+        }
+
+        private void CloseOtherAuxWindows(Window? keepWindow = null)
+        {
+            if (_dropShelf != null && _dropShelf != keepWindow)
+            {
+                var shelf = _dropShelf;
+                _dropShelf = null;
+                try
+                {
+                    if (shelf.IsVisible)
+                    {
+                        shelf.Close();
+                    }
+                }
+                catch (InvalidOperationException) { }
+            }
+
+            if (_noteWindow != null && _noteWindow != keepWindow)
+            {
+                var note = _noteWindow;
+                _noteWindow = null;
+                try
+                {
+                    if (note.IsVisible)
+                    {
+                        note.Close();
+                    }
+                }
+                catch (InvalidOperationException) { }
+            }
+
+            if (_settingsWindow != null && _settingsWindow != keepWindow)
+            {
+                var settings = _settingsWindow;
+                _settingsWindow = null;
+                try
+                {
+                    if (settings.IsVisible)
+                    {
+                        settings.Close();
+                    }
+                }
+                catch (InvalidOperationException) { }
+            }
+
+            UpdateFeatureButtonStates();
         }
 
         private void ShowNoteWindow()
         {
+            CloseOtherAuxWindows(_noteWindow);
+
             if (_noteWindow is { IsVisible: true })
             {
                 _noteWindow.Activate();
@@ -563,16 +583,9 @@ namespace WindowsNotch
             note.Closed += (s, e) =>
             {
                 _noteWindow = null;
+                UpdateFeatureButtonStates();
 
-                // Tombol X / Esc hanya menutup catatan dan kembali ke menu fitur,
-                // bukan ikut menutup atau men-collapse notch.
-                if (note.ClosedByUser && !IsSideAnchor)
-                {
-                    OpenFeaturePanel();
-                    return;
-                }
-
-                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+                if (PillHost.IsMouseOver || FeatureMenuBar.IsMouseOver || IsAuxOpen) return;
 
                 _collapseTimer.Stop();
                 CollapseNotch();
@@ -581,10 +594,13 @@ namespace WindowsNotch
             _noteWindow = note;
             note.Show();
             note.Activate();
+            UpdateFeatureButtonStates();
         }
 
         private void ShowSettingsWindow()
         {
+            CloseOtherAuxWindows(_settingsWindow);
+
             if (_settingsWindow is { IsVisible: true })
             {
                 _settingsWindow.Activate();
@@ -602,14 +618,9 @@ namespace WindowsNotch
             settings.Closed += (s, e) =>
             {
                 _settingsWindow = null;
+                UpdateFeatureButtonStates();
 
-                if (settings.ClosedByUser && !IsSideAnchor)
-                {
-                    OpenFeaturePanel();
-                    return;
-                }
-
-                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+                if (PillHost.IsMouseOver || FeatureMenuBar.IsMouseOver || IsAuxOpen) return;
 
                 _collapseTimer.Stop();
                 CollapseNotch();
@@ -618,15 +629,12 @@ namespace WindowsNotch
             _settingsWindow = settings;
             settings.Show();
             settings.Activate();
+            UpdateFeatureButtonStates();
         }
 
         private void PositionAuxWindow(Window window)
         {
             const double gap = 8;
-
-            double left = Left + FeatureButton.Margin.Left + FeatureButton.ActualWidth + gap;
-            double top = Top + FeatureButton.Margin.Top;
-
             var work = _monitor;
             if (work.Width < 1 || work.Height < 1)
             {
@@ -635,10 +643,24 @@ namespace WindowsNotch
                     SystemParameters.PrimaryScreenHeight);
             }
 
-            // Kalau ruang di kanan tidak cukup, buka di kiri ikon.
-            if (left + window.Width > work.Right - gap)
+            double left;
+            double top;
+
+            if (_anchor == NotchAnchor.LeftCenter)
             {
-                left = Left + FeatureButton.Margin.Left - window.Width - gap;
+                left = Left + Width + gap;
+                top = Top;
+            }
+            else if (_anchor == NotchAnchor.RightCenter)
+            {
+                left = Left - window.Width - gap;
+                top = Top;
+            }
+            else
+            {
+                double notchBottom = Top + (_isExpanded ? ExpandedHeight + FeatureBarExtraHeight : CollapsedHeight);
+                top = notchBottom + gap;
+                left = Left + (Width - window.Width) / 2;
             }
 
             left = Math.Clamp(left,
@@ -1121,8 +1143,6 @@ namespace WindowsNotch
         {
             _anchor = anchor;
 
-            if (FeaturePopup.IsOpen) FeaturePopup.IsOpen = false;
-
             // Hentikan animasi yang mungkin masih berjalan sebelum mengubah ukuran dasar
             _animationVersion++;
             PillHost.BeginAnimation(FrameworkElement.WidthProperty, null);
@@ -1143,7 +1163,7 @@ namespace WindowsNotch
 
             UpdateContentMargin();
             SetWindowSize(w, h);
-            UpdateFeatureButtonPosition(w, h);
+            UpdateFeatureBarPosition(w, h);
             UpdateNotchShape(new Size(w, h));
             UpdateSurface();
             UpdateVisualState();
@@ -1157,51 +1177,44 @@ namespace WindowsNotch
                 : new Thickness(16, 0, 16, 0);
         }
 
-        // Kapsul ikon tampil di semua mode (atas & sisi), hanya disembunyikan saat digeser
-        private void UpdateFeatureButtonVisibility()
+        private void UpdateFeatureBarVisibility()
         {
-            bool visible = !_isDragging;
-            FeatureButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-
-            if (!visible && FeaturePopup.IsOpen)
+            if (_isDragging || !_isExpanded)
             {
-                FeaturePopup.IsOpen = false;
+                HideFeatureBar(immediate: true);
+            }
+            else
+            {
+                ShowFeatureBar();
             }
         }
 
-        // Mode atas: kapsul di kanan tepi pill.
-        // Mode sisi: kapsul di tengah bawah pill.
-        private void UpdateFeatureButtonPosition(double pillWidth, double pillHeight)
+        private void UpdateFeatureBarPosition(double pillWidth, double pillHeight)
         {
-            if (IsSideAnchor)
+            double topMargin = pillHeight + FeatureBarGap;
+            if (_anchor == NotchAnchor.RightCenter)
             {
-                // Mode sisi: ikon menempel ke tepi layar. Untuk sisi kanan gunakan
-                // lebar window, bukan lebar pill yang sedang dianimasikan, supaya
-                // ikon tidak ikut bergeser saat collapse.
-                double windowWidth = Width > 0 && !double.IsNaN(Width)
-                    ? Width
-                    : ActualWidth;
-                double left = _anchor == NotchAnchor.RightCenter
-                    ? Math.Max(0, windowWidth - FeatureButtonWidth - SideFeatureInset)
-                    : SideFeatureInset;
-                double top = pillHeight + FeatureGap;
-                FeatureButton.Margin = new Thickness(left, top, 0, 0);
-                return;
+                FeatureMenuBar.HorizontalAlignment = HorizontalAlignment.Right;
+                FeatureMenuBar.Margin = new Thickness(0, topMargin, 14, 0);
             }
-
-            double rightLeft = (Width + pillWidth) / 2 + FeatureGap;
-            FeatureButton.Margin = new Thickness(rightLeft, FeatureButtonTop, 0, 0);
+            else if (_anchor == NotchAnchor.LeftCenter)
+            {
+                FeatureMenuBar.HorizontalAlignment = HorizontalAlignment.Left;
+                FeatureMenuBar.Margin = new Thickness(14, topMargin, 0, 0);
+            }
+            else
+            {
+                FeatureMenuBar.HorizontalAlignment = HorizontalAlignment.Center;
+                FeatureMenuBar.Margin = new Thickness(0, topMargin, 0, 0);
+            }
         }
 
-        // Snap instan ukuran window (dipakai saat expand & setelah collapse selesai).
-        // Mode atas-tengah menyisakan ruang di kanan untuk kapsul ikon; pill tetap
-        // di tengah layar karena window juga di-center.
-        // Mode sisi menyisakan ruang di bawah pill untuk kapsul ikon.
         private void SetWindowSize(double targetWidth, double targetHeight)
         {
-            double windowWidth = targetWidth + (IsSideAnchor ? 0 : 2 * FeatureDecorationWidth);
-            double windowHeight = targetHeight +
-                (IsSideAnchor ? FeatureGap + FeatureButtonWidth : 0);
+            double windowWidth = targetWidth;
+            double windowHeight = _isExpanded
+                ? targetHeight + FeatureBarExtraHeight
+                : targetHeight;
 
             Width = windowWidth;
             Height = windowHeight;
@@ -1230,7 +1243,7 @@ namespace WindowsNotch
                     break;
             }
 
-            UpdateFeatureButtonPosition(targetWidth, targetHeight);
+            UpdateFeatureBarPosition(targetWidth, targetHeight);
         }
 
         // Area kerja monitor (dalam DIP) tempat notch berada
@@ -1376,7 +1389,7 @@ namespace WindowsNotch
             PillHost.Height = ch;
             Width = cw;
             Height = ch;
-            UpdateFeatureButtonVisibility();
+            UpdateFeatureBarVisibility();
 
             // Jaga posisi notch tetap di bawah kursor setelah ukuran berubah
             grabX = Math.Clamp(grabX, 0, cw);
@@ -1531,7 +1544,7 @@ namespace WindowsNotch
             UpdateAccent();
 
             if (IsAuxOpen || _isDragging) return;
-            if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+            if (PillHost.IsMouseOver || FeatureMenuBar.IsMouseOver) return;
 
             _collapseTimer.Stop();
             _collapseTimer.Start();
@@ -1678,6 +1691,7 @@ namespace WindowsNotch
             StatusPopupText.Foreground = isError
                 ? DangerBrush
                 : FrozenBrush(0xF5, 0xF5, 0xF7);
+            StatusPopup.VerticalOffset = _isExpanded ? (FeatureBarGap + FeatureBarHeight + 14) : 8;
             StatusPopup.IsOpen = true;
             _statusTimer.Start();
         }
@@ -1741,6 +1755,8 @@ namespace WindowsNotch
 
         private void ShowFileShelf()
         {
+            CloseOtherAuxWindows(_dropShelf);
+
             if (_dropShelf is { IsVisible: true })
             {
                 _dropShelf.Activate();
@@ -1773,10 +1789,12 @@ namespace WindowsNotch
 
             if (_dropShelf is { IsVisible: true })
             {
+                CloseOtherAuxWindows(_dropShelf);
                 _dropShelf.AddPaths(validPaths);
                 SyncDroppedPathsFromShelf(_dropShelf);
                 PositionAuxWindow(_dropShelf);
                 _dropShelf.Activate();
+                UpdateFeatureButtonStates();
                 return;
             }
 
@@ -1785,6 +1803,8 @@ namespace WindowsNotch
 
         private void CreateDropShelf(IEnumerable<string> paths)
         {
+            CloseOtherAuxWindows();
+
             var shelf = new DropShelfWindow(paths);
             PositionAuxWindow(shelf);
 
@@ -1792,8 +1812,9 @@ namespace WindowsNotch
             shelf.Closed += (s, e) =>
             {
                 _dropShelf = null;
+                UpdateFeatureButtonStates();
 
-                if (PillHost.IsMouseOver || FeatureButton.IsMouseOver) return;
+                if (PillHost.IsMouseOver || FeatureMenuBar.IsMouseOver || IsAuxOpen) return;
 
                 _collapseTimer.Stop();
                 CollapseNotch();
@@ -1803,6 +1824,7 @@ namespace WindowsNotch
             shelf.Show();
             shelf.Activate();
             SyncDroppedPathsFromShelf(shelf);
+            UpdateFeatureButtonStates();
         }
 
         private void SyncDroppedPathsFromShelf(DropShelfWindow shelf)
@@ -1814,8 +1836,7 @@ namespace WindowsNotch
 
         private void UpdateFileMenuLabel()
         {
-            FileButton.IsEnabled = _droppedPaths.Count > 0;
-            FileMenuLabel.Text = _droppedPaths.Count > 0
+            FileButton.ToolTip = _droppedPaths.Count > 0
                 ? Localization.Format("FileCountLabel", _droppedPaths.Count)
                 : Localization.Get("FileTitle");
         }
@@ -1848,7 +1869,7 @@ namespace WindowsNotch
         // Menentukan layout mana yang tampil: idle dashboard, media horizontal, atau mini vertikal di sisi
         private void UpdateVisualState()
         {
-            UpdateFeatureButtonVisibility();
+            UpdateFeatureBarVisibility();
 
             bool hasMedia = _media != null;
             bool sideCollapsed = IsSideAnchor && !_isExpanded;
@@ -2104,6 +2125,7 @@ namespace WindowsNotch
             var (w, h) = ExpandedSize;
             SetWindowSize(w, h);
             AnimatePillTo(w, h, widthFirst: true);
+            ShowFeatureBar();
         }
 
         // Saat kursor mouse keluar dari area Notch (Mengecil)
@@ -2114,6 +2136,7 @@ namespace WindowsNotch
             _animationVersion++;
 
             ApplyExpandedState(false);
+            HideFeatureBar();
 
             // Window baru menyusul setelah animasi pill selesai (lihat handler SizeChanged)
             var (w, h) = CollapsedSize;
