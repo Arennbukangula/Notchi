@@ -14,6 +14,7 @@
     <sys:String x:Key="Exit">Quit</sys:String>
 
     <sys:String x:Key="Metrics">METRICS</sys:String>
+    <sys:String x:Key="NoRecentMedia">No recent media</sys:String>
     <sys:String x:Key="Battery">Battery</sys:String>
     <sys:String x:Key="System">SYSTEM</sys:String>
 

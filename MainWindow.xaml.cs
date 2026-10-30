@@ -25,6 +25,9 @@ namespace WindowsNotch
         private const double ExpandedHeight = 100;
         private const double IdleExpandedHorizontalMargin = 8;
         private const double IdleExpandedTopMargin = 8;
+        private const int IdleCalendarPage = 0;
+        private const int IdleMediaPage = 1;
+        private const int IdleMetricsPage = 2;
 
         private const double SideCollapsedWidth = 40;
         private const double SideCollapsedHeight = 107;
@@ -42,6 +45,7 @@ namespace WindowsNotch
         private const double FeaturePanelStartOffset = -6;
 
         private static readonly Duration PillPhaseDuration = new(TimeSpan.FromSeconds(0.16));
+        private static readonly Duration IdlePageDuration = new(TimeSpan.FromMilliseconds(260));
 
         private const int GwlExStyle = -20;
         private const int WsExNoActivate = 0x08000000;
@@ -101,6 +105,9 @@ namespace WindowsNotch
         private static readonly SolidColorBrush BatteryBrush = FrozenBrush(0x4C, 0xD9, 0x64);
         private static readonly SolidColorBrush DropZoneActiveBrush =
             FrozenBrush(Color.FromArgb(0x38, 0x3D, 0x7E, 0xFF));
+        private static readonly SolidColorBrush CalendarDayBrush = FrozenBrush(0xF5, 0xF5, 0xF7);
+        private static readonly SolidColorBrush CalendarMutedDayBrush = FrozenBrush(0x85, 0x85, 0x8D);
+        private static readonly SolidColorBrush CalendarTodayTextBrush = FrozenBrush(0x1C, 0x1C, 0x1E);
 
         private static readonly Color IdleAccent = Color.FromRgb(0x6C, 0x7B, 0xFF);
         private static readonly Color DropAccent = Color.FromRgb(0x3D, 0x7E, 0xFF);
@@ -122,6 +129,8 @@ namespace WindowsNotch
         private readonly SystemStatusService _systemStatus = new();
         private AppSettings _settings = new();
         private MediaInfo? _media;
+        private MediaInfo? _lastMedia;
+        private int _idlePage;
         private bool _isSeeking;
         private bool _isExpanded;
         private bool _isDragging;
@@ -136,6 +145,11 @@ namespace WindowsNotch
         private readonly QuickConversionService _quickConversion = new();
         private readonly List<string> _droppedPaths = new();
         private readonly GlobalHotkeyService _hotkey = new();
+        private readonly TextBlock[] _calendarWeekdayTexts;
+        private readonly Border[] _calendarDayCircles;
+        private readonly TextBlock[] _calendarDayTexts;
+        private readonly Grid[] _idlePages;
+        private readonly TranslateTransform[] _idlePageTransforms;
         private bool _isHidden;
         private int _animationVersion;
         private bool _isConverting;
@@ -176,6 +190,30 @@ namespace WindowsNotch
         {
             InitializeComponent();
 
+            _calendarWeekdayTexts = new[]
+            {
+                CalendarWeekday0, CalendarWeekday1, CalendarWeekday2,
+                CalendarWeekday3, CalendarWeekday4, CalendarWeekday5,
+                CalendarWeekday6
+            };
+            _calendarDayCircles = new[]
+            {
+                CalendarDayCircle0, CalendarDayCircle1, CalendarDayCircle2,
+                CalendarDayCircle3, CalendarDayCircle4, CalendarDayCircle5,
+                CalendarDayCircle6
+            };
+            _calendarDayTexts = new[]
+            {
+                CalendarDayText0, CalendarDayText1, CalendarDayText2,
+                CalendarDayText3, CalendarDayText4, CalendarDayText5,
+                CalendarDayText6
+            };
+            _idlePages = new[] { CalendarPage, MediaPage, MetricsPage };
+            _idlePageTransforms = new[]
+            {
+                CalendarPageTransform, MediaPageTransform, MetricsPageTransform
+            };
+
             _settings = SettingsStore.Load();
 
             bool autoStartEnabled = StartupService.IsEnabled();
@@ -204,7 +242,6 @@ namespace WindowsNotch
                 SetWindowSize(w, h);
             };
             StartClock();
-            ApplySettingsVisibility();
             Localization.LanguageChanged += OnLanguageChanged;
 
             // Hover dengan debounce: cursor yang sempat keluar-masuk tidak memicu getaran
@@ -278,6 +315,11 @@ namespace WindowsNotch
             PillHost.PreviewMouseLeftButtonDown += OnPillMouseDown;
             PillHost.PreviewMouseMove += OnPillMouseMove;
             PillHost.PreviewMouseLeftButtonUp += OnPillMouseUp;
+
+            // Scroll wheel berpindah halaman saat idle, bukan saat pemutar media aktif
+            PillHost.PreviewMouseWheel += OnPillMouseWheel;
+            IdlePageViewport.SizeChanged += (s, e) => UpdateIdlePageRestPosition();
+
             PillHost.LostMouseCapture += (s, e) =>
             {
                 // Jangan biarkan state drag menggantung bila capture hilang
@@ -347,6 +389,10 @@ namespace WindowsNotch
             PrevButton.Click += async (s, e) => await _smtc.PreviousAsync();
             NextButton.Click += async (s, e) => await _smtc.NextAsync();
 
+            LastMediaPlayPauseButton.Click += async (s, e) => await _smtc.PlayPauseAsync();
+            LastMediaPrevButton.Click += async (s, e) => await _smtc.PreviousAsync();
+            LastMediaNextButton.Click += async (s, e) => await _smtc.NextAsync();
+
             // Seek: drag/klik slider, terapkan saat tombol mouse dilepas
             ProgressSlider.PreviewMouseLeftButtonDown += (s, e) => _isSeeking = true;
             ProgressSlider.PreviewMouseLeftButtonUp += (s, e) => CommitSeek();
@@ -355,6 +401,22 @@ namespace WindowsNotch
             {
                 if (_isSeeking) UpdateTimeLabels(TimeSpan.FromSeconds(ProgressSlider.Value));
             };
+
+            LastMediaProgressSlider.PreviewMouseLeftButtonDown += (s, e) => _isSeeking = true;
+            LastMediaProgressSlider.PreviewMouseLeftButtonUp += (s, e) => CommitLastMediaSeek();
+            LastMediaProgressSlider.LostMouseCapture += (s, e) => CommitLastMediaSeek();
+            LastMediaProgressSlider.ValueChanged += (s, e) =>
+            {
+                if (!_isSeeking) return;
+
+                double duration = Math.Max(0, _media?.Duration.TotalSeconds ?? 0);
+                double position = LastMediaProgressSlider.Value;
+                LastMediaPositionText.Text = FormatTime(TimeSpan.FromSeconds(position));
+                LastMediaDurationText.Text = duration > 0
+                    ? "-" + FormatTime(TimeSpan.FromSeconds(
+                        Math.Max(0, duration - position)))
+                    : "--:--";
+            };
         }
 
         private void CommitSeek()
@@ -362,6 +424,13 @@ namespace WindowsNotch
             if (!_isSeeking) return;
             _isSeeking = false;
             _ = _smtc.SeekAsync(TimeSpan.FromSeconds(ProgressSlider.Value));
+        }
+
+        private void CommitLastMediaSeek()
+        {
+            if (!_isSeeking) return;
+            _isSeeking = false;
+            _ = _smtc.SeekAsync(TimeSpan.FromSeconds(LastMediaProgressSlider.Value));
         }
 
         // ===================== Panel Fitur =====================
@@ -527,7 +596,6 @@ namespace WindowsNotch
 
             settings.SettingsChanged += (s, e) =>
             {
-                ApplySettingsVisibility();
                 _hotkey.Register(_settings.HotkeyModifiers, _settings.HotkeyKey);
             };
 
@@ -598,8 +666,6 @@ namespace WindowsNotch
 
         private void ApplySystemStatus(SystemStatusSnapshot status)
         {
-            if (_media != null) return;
-
             SetMetric(ExpandedCpuBar, ExpandedCpuText, status.CpuPercent);
             SetMetric(ExpandedRamBar, ExpandedRamText, status.RamPercent);
             SetMetric(ExpandedDiskBar, ExpandedDiskText, status.DiskPercent);
@@ -612,17 +678,24 @@ namespace WindowsNotch
 
         private void ApplyMedia(MediaInfo? info)
         {
+            if (info == null && _media != null)
+            {
+                _lastMedia = SnapshotMedia(_media);
+            }
+
             _media = info;
 
             if (info == null)
             {
+                UpdateLastMediaPage();
                 _systemStatus.Start();
                 UpdateVisualState();
                 UpdateAccent();
                 return;
             }
 
-            _systemStatus.Stop();
+            _lastMedia = info;
+            UpdateLastMediaPage();
 
             TrackTitle.Text = info.Title;
             TrackArtist.Text = info.Artist;
@@ -640,6 +713,72 @@ namespace WindowsNotch
                 ProgressSlider.Value = Math.Clamp(info.Position.TotalSeconds, 0, ProgressSlider.Maximum);
                 UpdateTimeLabels(info.Position);
             }
+        }
+
+        private MediaInfo SnapshotMedia(MediaInfo source)
+        {
+            double position = Math.Clamp(
+                ProgressSlider.Value, 0, Math.Max(0, source.Duration.TotalSeconds));
+
+            return new MediaInfo
+            {
+                Title = source.Title,
+                Artist = source.Artist,
+                AlbumArt = source.AlbumArt,
+                SourceAppId = source.SourceAppId,
+                IsPlaying = false,
+                Position = TimeSpan.FromSeconds(position),
+                Duration = source.Duration
+            };
+        }
+
+        private void UpdateLastMediaPage()
+        {
+            bool hasMedia = _lastMedia != null;
+
+            LastMediaContent.Visibility = hasMedia ? Visibility.Visible : Visibility.Collapsed;
+            LastMediaEmptyPanel.Visibility = hasMedia ? Visibility.Collapsed : Visibility.Visible;
+
+            if (_lastMedia is not MediaInfo media) return;
+
+            LastMediaTitle.Text = media.Title;
+            LastMediaArtist.Text = media.Artist;
+            SetLastMediaArt(media.AlbumArt);
+            ApplySourceApp(
+                media.SourceAppId, LastMediaSourceIcon, LastMediaSourceLogo, LastMediaSourceGlyph);
+
+            double duration = Math.Max(0, media.Duration.TotalSeconds);
+            double position = Math.Clamp(
+                media.Position.TotalSeconds, 0, duration > 0 ? duration : 0);
+
+            LastMediaProgressSlider.IsHitTestVisible = _media != null;
+            LastMediaControlsRow.IsEnabled = _media != null;
+            LastMediaControlsRow.Opacity = _media != null ? 1 : 0.4;
+            LastMediaProgressSlider.Maximum = Math.Max(1, duration);
+            LastMediaProgressSlider.Value = position;
+            LastMediaPositionText.Text = FormatTime(TimeSpan.FromSeconds(position));
+            LastMediaDurationText.Text = duration > 0
+                ? "-" + FormatTime(TimeSpan.FromSeconds(Math.Max(0, duration - position)))
+                : "--:--";
+
+            LastMediaPlayPausePath.Data = Geometry.Parse(media.IsPlaying
+                ? "M0,0 h4 v14 h-4 z M8,0 h4 v14 h-4 z"
+                : "M0,0 L12,7 L0,14 z");
+        }
+
+        private void SetLastMediaArt(ImageSource? art)
+        {
+            if (art != null)
+            {
+                LastMediaArt.Source = art;
+                LastMediaArt.Visibility = Visibility.Visible;
+                LastMediaArtPlaceholder.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            LastMediaArt.Source = null;
+            LastMediaArt.Visibility = Visibility.Collapsed;
+            LastMediaArtPlaceholder.Visibility = Visibility.Visible;
         }
 
         private void SetAlbumArt(ImageSource? art)
@@ -667,25 +806,28 @@ namespace WindowsNotch
         }
 
         // Ikon aplikasi sumber: logo platform bila dikenal, fallback ke glyph musik.
-        private void ApplySourceApp(string aumid)
+        private void ApplySourceApp(string aumid) =>
+            ApplySourceApp(aumid, SourceAppIcon, SourceAppLogo, SourceAppGlyph);
+
+        private void ApplySourceApp(string aumid, Border icon, Image logo, TextBlock glyph)
         {
             string? logoKey = TryGetSourceLogoKey(aumid);
 
-            if (logoKey != null && TryFindResource(logoKey) is ImageSource logo)
+            if (logoKey != null && TryFindResource(logoKey) is ImageSource logoSource)
             {
-                SourceAppLogo.Source = logo;
-                SourceAppLogo.Visibility = Visibility.Visible;
-                SourceAppGlyph.Visibility = Visibility.Collapsed;
-                SourceAppIcon.Background = Brushes.Transparent;
+                logo.Source = logoSource;
+                logo.Visibility = Visibility.Visible;
+                glyph.Visibility = Visibility.Collapsed;
+                icon.Background = Brushes.Transparent;
                 return;
             }
 
             Color color = GetSourceColor(aumid) ?? UnknownSourceColor;
 
-            SourceAppLogo.Source = null;
-            SourceAppLogo.Visibility = Visibility.Collapsed;
-            SourceAppGlyph.Visibility = Visibility.Visible;
-            SourceAppIcon.Background = FrozenBrush(color);
+            logo.Source = null;
+            logo.Visibility = Visibility.Collapsed;
+            glyph.Visibility = Visibility.Visible;
+            icon.Background = FrozenBrush(color);
         }
 
         private static string? TryGetSourceLogoKey(string aumid)
@@ -844,6 +986,7 @@ namespace WindowsNotch
             CollapsedPausePath.Data = Geometry.Parse(collapsed);
             SidePausePath.Data = Geometry.Parse(collapsed);
             PlayPausePath.Data = Geometry.Parse(expanded);
+            LastMediaPlayPausePath.Data = Geometry.Parse(expanded);
         }
 
         private void UpdateProgress()
@@ -853,6 +996,16 @@ namespace WindowsNotch
             var position = _smtc.GetPosition();
             ProgressSlider.Value = Math.Clamp(position.TotalSeconds, 0, ProgressSlider.Maximum);
             UpdateTimeLabels(position);
+
+            double duration = Math.Max(0, _media.Duration.TotalSeconds);
+            LastMediaProgressSlider.Maximum = Math.Max(1, duration);
+            LastMediaProgressSlider.Value = Math.Clamp(
+                position.TotalSeconds, 0, LastMediaProgressSlider.Maximum);
+            LastMediaPositionText.Text = FormatTime(position);
+            LastMediaDurationText.Text = duration > 0
+                ? "-" + FormatTime(TimeSpan.FromSeconds(
+                    Math.Max(0, duration - position.TotalSeconds)))
+                : "--:--";
         }
 
         // Label kiri "0:11", kanan sisa waktu "-3:22" (ala mockup)
@@ -1702,14 +1855,25 @@ namespace WindowsNotch
 
             SideCollapsedRoot.Visibility = hasMedia && sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
             SideIdleRoot.Visibility = !hasMedia && sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
-            MediaRoot.Visibility = hasMedia && !sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
-            IdleRoot.Visibility = !hasMedia && !sideCollapsed ? Visibility.Visible : Visibility.Collapsed;
+            MediaRoot.Visibility = hasMedia && !_isExpanded && !sideCollapsed
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            IdleRoot.Visibility = _isExpanded || (!hasMedia && !sideCollapsed)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
             // Mode sisi yang mekar tetap horizontal, tapi konten ditengahkan vertikal
             MediaRoot.VerticalAlignment = IsSideAnchor ? VerticalAlignment.Center : VerticalAlignment.Top;
             MediaRoot.Margin = IsSideAnchor ? new Thickness(0) : new Thickness(0, 6.5, 0, 0);
 
-            if (!hasMedia && !sideCollapsed)
+            VerticalAlignment pageAlignment = IsSideAnchor
+                ? VerticalAlignment.Center
+                : VerticalAlignment.Stretch;
+            CalendarPage.VerticalAlignment = pageAlignment;
+            MediaPage.VerticalAlignment = pageAlignment;
+            MetricsPage.VerticalAlignment = pageAlignment;
+
+            if (IdleRoot.Visibility == Visibility.Visible)
             {
                 IdleCompactRoot.Visibility = _isExpanded ? Visibility.Collapsed : Visibility.Visible;
                 IdleExpandedRoot.Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed;
@@ -1739,14 +1903,140 @@ namespace WindowsNotch
             string time = now.ToString("HH:mm", CultureInfo.CurrentCulture);
 
             CompactClockText.Text = time;
-            ExpandedClockText.Text = time;
             SideHourText.Text = now.ToString("HH", CultureInfo.CurrentCulture);
             SideMinuteText.Text = now.ToString("mm", CultureInfo.CurrentCulture);
 
             CompactDateText.Text = now.ToString("ddd, d MMM", CultureInfo.CurrentCulture);
-            ExpandedDateText.Text = now.ToString("dddd, d MMM yyyy", CultureInfo.CurrentCulture);
             SideDayText.Text = now.ToString("ddd", CultureInfo.CurrentCulture);
             SideDateText.Text = now.ToString("d MMM", CultureInfo.CurrentCulture);
+
+            UpdateCalendar(now);
+        }
+
+        // Kalender ringkas: 7 hari berurutan dengan hari ini di kolom tengah.
+        private void UpdateCalendar(DateTime now)
+        {
+            CultureInfo culture = CultureInfo.CurrentCulture;
+            DateTime start = now.Date.AddDays(-3);
+
+            CalendarMonthText.Text = now.ToString("MMMM yyyy", culture);
+            CalendarClockText.Text = now.ToString("HH:mm", culture);
+
+            for (int index = 0; index < _calendarDayTexts.Length; index++)
+            {
+                DateTime day = start.AddDays(index);
+                bool isToday = day.Date == now.Date;
+                bool isCurrentMonth = day.Month == now.Month && day.Year == now.Year;
+
+                string weekday = day.ToString("dddd", culture);
+                _calendarWeekdayTexts[index].Text = weekday.Length > 0
+                    ? culture.TextInfo.ToUpper(weekday[0]).ToString()
+                    : string.Empty;
+
+                // Fokuskan perhatian ke hari ini: makin jauh dari tengah,
+                // makin redup tanggal dan label harinya.
+                double opacity = Math.Max(0.16, 1 - Math.Abs(index - 3) * 0.3);
+                _calendarWeekdayTexts[index].Opacity = opacity;
+                _calendarDayCircles[index].Opacity = opacity;
+
+                _calendarDayTexts[index].Text = day.Day.ToString(culture);
+                _calendarDayCircles[index].Background = isToday
+                    ? Brushes.White
+                    : Brushes.Transparent;
+                _calendarDayTexts[index].Foreground = isToday
+                    ? CalendarTodayTextBrush
+                    : isCurrentMonth ? CalendarDayBrush : CalendarMutedDayBrush;
+                _calendarDayTexts[index].FontWeight = isToday
+                    ? FontWeights.Bold
+                    : FontWeights.SemiBold;
+            }
+        }
+
+        private void OnPillMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (!_isExpanded || e.Delta == 0) return;
+
+            int targetPage = e.Delta < 0
+                ? Math.Min(IdleMetricsPage, _idlePage + 1)
+                : Math.Max(IdleCalendarPage, _idlePage - 1);
+
+            if (targetPage == _idlePage) return;
+
+            e.Handled = true;
+            AnimateIdlePage(targetPage);
+        }
+
+        private void AnimateIdlePage(int targetPage)
+        {
+            if (targetPage == _idlePage) return;
+
+            double offset = GetIdlePageOffset();
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            for (int index = 0; index < _idlePages.Length; index++)
+            {
+                double startX = _idlePageTransforms[index].X;
+                double startOpacity = _idlePages[index].Opacity;
+                double endX = (index - targetPage) * offset;
+                double endOpacity = index == targetPage ? 1 : 0;
+
+                // Nilai dasar diset ke target agar animasi bisa dipotong kapan saja
+                // tanpa menunggu callback Completed.
+                _idlePageTransforms[index].X = endX;
+                _idlePages[index].Opacity = endOpacity;
+
+                var slide = new DoubleAnimation(startX, endX, IdlePageDuration)
+                {
+                    EasingFunction = ease,
+                    FillBehavior = FillBehavior.Stop
+                };
+                var fade = new DoubleAnimation(startOpacity, endOpacity, IdlePageDuration)
+                {
+                    FillBehavior = FillBehavior.Stop
+                };
+
+                _idlePageTransforms[index].BeginAnimation(
+                    TranslateTransform.XProperty, slide);
+                _idlePages[index].BeginAnimation(UIElement.OpacityProperty, fade);
+            }
+
+            _idlePage = targetPage;
+        }
+
+        private void ResetIdlePage(int page = IdleCalendarPage)
+        {
+            _idlePage = Math.Clamp(page, IdleCalendarPage, _idlePages.Length - 1);
+            ClearIdlePageAnimations();
+            UpdateIdlePageRestPosition();
+        }
+
+        private void UpdateIdlePageRestPosition()
+        {
+            double offset = GetIdlePageOffset();
+
+            for (int index = 0; index < _idlePages.Length; index++)
+            {
+                _idlePageTransforms[index].X = (index - _idlePage) * offset;
+                _idlePages[index].Opacity = index == _idlePage ? 1 : 0;
+            }
+        }
+
+        private double GetIdlePageOffset()
+        {
+            double width = IdlePageViewport.ActualWidth;
+            if (width > 0) return width;
+
+            return Math.Max(1, ExpandedWidth - IdleExpandedHorizontalMargin * 2 - 18);
+        }
+
+        private void ClearIdlePageAnimations()
+        {
+            for (int index = 0; index < _idlePages.Length; index++)
+            {
+                _idlePageTransforms[index].BeginAnimation(
+                    TranslateTransform.XProperty, null);
+                _idlePages[index].BeginAnimation(UIElement.OpacityProperty, null);
+            }
         }
 
         private static SolidColorBrush FrozenBrush(byte r, byte g, byte b)
@@ -1784,7 +2074,7 @@ namespace WindowsNotch
             TextBlock text,
             double innerWidth)
         {
-            if (!_settings.ShowBattery || percent is not int p)
+            if (percent is not int p)
             {
                 panel.Visibility = Visibility.Collapsed;
                 return;
@@ -1799,21 +2089,6 @@ namespace WindowsNotch
             text.Text = isCharging ? $"{p}% AC" : $"{p}%";
         }
 
-        private void ApplySettingsVisibility()
-        {
-            var visible = Visibility.Visible;
-            var collapsed = Visibility.Collapsed;
-
-            ExpandedCpuRow.Visibility = _settings.ShowCpu ? visible : collapsed;
-            ExpandedRamRow.Visibility = _settings.ShowRam ? visible : collapsed;
-            ExpandedDiskRow.Visibility = _settings.ShowDisk ? visible : collapsed;
-
-            if (!_settings.ShowBattery)
-            {
-                ExpandedBatteryPanel.Visibility = collapsed;
-            }
-        }
-
         // Saat kursor mouse masuk ke area Notch (Mekar)
         private void ExpandNotch()
         {
@@ -1822,6 +2097,7 @@ namespace WindowsNotch
             _animationVersion++;
 
             ApplyExpandedState(true);
+            ResetIdlePage(_media != null ? IdleMediaPage : IdleCalendarPage);
 
             // Window langsung snap ke ukuran akhir (transparan, tak terlihat),
             // lalu pill-lah yang dianimasikan -> tanpa resize OS per frame
