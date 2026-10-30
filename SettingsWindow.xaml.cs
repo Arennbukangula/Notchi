@@ -25,11 +25,6 @@ namespace WindowsNotch
 
             _settings = settings;
 
-            ShowCpuToggle.IsChecked = settings.ShowCpu;
-            ShowRamToggle.IsChecked = settings.ShowRam;
-            ShowDiskToggle.IsChecked = settings.ShowDisk;
-            ShowBatteryToggle.IsChecked = settings.ShowBattery;
-
             AutoStartToggle.IsChecked = StartupService.IsEnabled();
             _settings.AutoStart = AutoStartToggle.IsChecked == true;
 
@@ -41,10 +36,6 @@ namespace WindowsNotch
             // Tampilkan hotkey saat ini
             HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
 
-            ShowCpuToggle.Click += OnMetricToggleChanged;
-            ShowRamToggle.Click += OnMetricToggleChanged;
-            ShowDiskToggle.Click += OnMetricToggleChanged;
-            ShowBatteryToggle.Click += OnMetricToggleChanged;
             AutoStartToggle.Click += OnAutoStartToggleChanged;
             IndonesianOption.Checked += OnLanguageChanged;
             EnglishOption.Checked += OnLanguageChanged;
@@ -79,18 +70,6 @@ namespace WindowsNotch
             _isRecordingHotkey = true;
             HotkeyLabel.Text = Localization.Get("HotkeyRecording");
             HotkeyRecorder.BorderBrush = AccentBrush;
-        }
-
-        private void OnMetricToggleChanged(object? sender, RoutedEventArgs e)
-        {
-            if (_initializing) return;
-
-            _settings.ShowCpu = ShowCpuToggle.IsChecked == true;
-            _settings.ShowRam = ShowRamToggle.IsChecked == true;
-            _settings.ShowDisk = ShowDiskToggle.IsChecked == true;
-            _settings.ShowBattery = ShowBatteryToggle.IsChecked == true;
-
-            SaveSettings();
         }
 
         private void OnAutoStartToggleChanged(object? sender, RoutedEventArgs e)
