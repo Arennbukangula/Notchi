@@ -18,6 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="assets\icon.ico" />
     <Resource Include="assets\icon.png" />
   </ItemGroup>
 
