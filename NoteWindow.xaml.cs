@@ -45,20 +45,11 @@ namespace WindowsNotch
             NoteTextBox.TextChanged += OnNoteTextChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
 
-            HeaderRow.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.ChangedButton == MouseButton.Left)
-                {
-                    try { DragMove(); } catch (InvalidOperationException) { }
-                }
-            };
-            CardBorder.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.ChangedButton != MouseButton.Left) return;
-                if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+            var headerDrag = new WindowDragHelper(this, HeaderRow);
+            headerDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
 
-                try { DragMove(); } catch (InvalidOperationException) { }
-            };
+            var borderDrag = new WindowDragHelper(this, CardBorder, IsInteractive);
+            borderDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
 
             ResizeGrip.MouseLeftButtonDown += OnResizeGripMouseLeftButtonDown;
             ResizeGrip.MouseMove += OnResizeGripMouseMove;
@@ -90,6 +81,7 @@ namespace WindowsNotch
         public string NotePath { get; }
 
         public bool ClosedByUser { get; private set; }
+        public event EventHandler? PositionSaved;
 
         private void CloseFromUser()
         {

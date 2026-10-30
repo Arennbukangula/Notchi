@@ -18,5 +18,12 @@ namespace WindowsNotch
         /// Default: N (0x4E)
         /// </summary>
         public uint HotkeyKey { get; set; } = 0x4E; // N
+
+        public double? NoteLeft { get; set; }
+        public double? NoteTop { get; set; }
+        public double? SettingsLeft { get; set; }
+        public double? SettingsTop { get; set; }
+        public double? DropShelfLeft { get; set; }
+        public double? DropShelfTop { get; set; }
     }
 }

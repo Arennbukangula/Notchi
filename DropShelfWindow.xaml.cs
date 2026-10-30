@@ -36,20 +36,11 @@ namespace WindowsNotch
             OpenAllButton.Click += (s, e) => OpenAll();
             ClearButton.Click += (s, e) => ClearItems();
 
-            HeaderRow.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.ChangedButton == MouseButton.Left)
-                {
-                    try { DragMove(); } catch (InvalidOperationException) { }
-                }
-            };
-            CardBorder.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.ChangedButton != MouseButton.Left) return;
-                if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+            var headerDrag = new WindowDragHelper(this, HeaderRow);
+            headerDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
 
-                try { DragMove(); } catch (InvalidOperationException) { }
-            };
+            var borderDrag = new WindowDragHelper(this, CardBorder, IsInteractive);
+            borderDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
 
             Closed += (s, e) => _isClosing = true;
 
@@ -60,6 +51,7 @@ namespace WindowsNotch
         }
 
         public event EventHandler? ItemsChanged;
+        public event EventHandler? PositionSaved;
 
         public IReadOnlyList<string> Paths =>
             _items.Select(item => item.Path).ToList();

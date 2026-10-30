@@ -41,19 +41,20 @@ namespace WindowsNotch
             EnglishOption.Checked += OnLanguageChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
 
-            HeaderRow.MouseLeftButtonDown += (s, e) =>
+            var headerDrag = new WindowDragHelper(this, HeaderRow);
+            headerDrag.DragEnded += (s, e) =>
             {
-                if (e.ChangedButton == MouseButton.Left)
-                {
-                    try { DragMove(); } catch (InvalidOperationException) { }
-                }
+                _settings.SettingsLeft = Left;
+                _settings.SettingsTop = Top;
+                SettingsStore.Save(_settings);
             };
-            CardBorder.MouseLeftButtonDown += (s, e) =>
-            {
-                if (e.ChangedButton != MouseButton.Left) return;
-                if (IsInteractive(e.OriginalSource as DependencyObject)) return;
 
-                try { DragMove(); } catch (InvalidOperationException) { }
+            var borderDrag = new WindowDragHelper(this, CardBorder, IsInteractive);
+            borderDrag.DragEnded += (s, e) =>
+            {
+                _settings.SettingsLeft = Left;
+                _settings.SettingsTop = Top;
+                SettingsStore.Save(_settings);
             };
 
             HotkeyRecorder.MouseLeftButtonDown += OnHotkeyRecorderClick;

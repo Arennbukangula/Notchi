@@ -580,6 +580,13 @@ namespace WindowsNotch
             var note = new NoteWindow();
             PositionAuxWindow(note);
 
+            note.PositionSaved += (s, e) =>
+            {
+                _settings.NoteLeft = note.Left;
+                _settings.NoteTop = note.Top;
+                SettingsStore.Save(_settings);
+            };
+
             note.Closed += (s, e) =>
             {
                 _noteWindow = null;
@@ -643,24 +650,51 @@ namespace WindowsNotch
                     SystemParameters.PrimaryScreenHeight);
             }
 
+            double? savedLeft = null;
+            double? savedTop = null;
+
+            if (window is NoteWindow)
+            {
+                savedLeft = _settings.NoteLeft;
+                savedTop = _settings.NoteTop;
+            }
+            else if (window is SettingsWindow)
+            {
+                savedLeft = _settings.SettingsLeft;
+                savedTop = _settings.SettingsTop;
+            }
+            else if (window is DropShelfWindow)
+            {
+                savedLeft = _settings.DropShelfLeft;
+                savedTop = _settings.DropShelfTop;
+            }
+
             double left;
             double top;
 
-            if (_anchor == NotchAnchor.LeftCenter)
+            if (savedLeft.HasValue && savedTop.HasValue)
             {
-                left = Left + Width + gap;
-                top = Top;
-            }
-            else if (_anchor == NotchAnchor.RightCenter)
-            {
-                left = Left - window.Width - gap;
-                top = Top;
+                left = savedLeft.Value;
+                top = savedTop.Value;
             }
             else
             {
-                double notchBottom = Top + (_isExpanded ? ExpandedHeight + FeatureBarExtraHeight : CollapsedHeight);
-                top = notchBottom + gap;
-                left = Left + (Width - window.Width) / 2;
+                if (_anchor == NotchAnchor.LeftCenter)
+                {
+                    left = Left + Width + gap;
+                    top = Top;
+                }
+                else if (_anchor == NotchAnchor.RightCenter)
+                {
+                    left = Left - window.Width - gap;
+                    top = Top;
+                }
+                else
+                {
+                    double notchBottom = Top + (_isExpanded ? ExpandedHeight + FeatureBarExtraHeight : CollapsedHeight);
+                    top = notchBottom + gap;
+                    left = Left + (Width - window.Width) / 2;
+                }
             }
 
             left = Math.Clamp(left,
@@ -1807,6 +1841,13 @@ namespace WindowsNotch
 
             var shelf = new DropShelfWindow(paths);
             PositionAuxWindow(shelf);
+
+            shelf.PositionSaved += (s, e) =>
+            {
+                _settings.DropShelfLeft = shelf.Left;
+                _settings.DropShelfTop = shelf.Top;
+                SettingsStore.Save(_settings);
+            };
 
             shelf.ItemsChanged += (s, e) => SyncDroppedPathsFromShelf(shelf);
             shelf.Closed += (s, e) =>
