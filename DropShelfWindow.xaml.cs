@@ -36,6 +36,21 @@ namespace WindowsNotch
             OpenAllButton.Click += (s, e) => OpenAll();
             ClearButton.Click += (s, e) => ClearItems();
 
+            HeaderRow.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Left)
+                {
+                    try { DragMove(); } catch (InvalidOperationException) { }
+                }
+            };
+            CardBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton != MouseButton.Left) return;
+                if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+
+                try { DragMove(); } catch (InvalidOperationException) { }
+            };
+
             Closed += (s, e) => _isClosing = true;
 
             PreviewKeyDown += OnPreviewKeyDown;
@@ -215,6 +230,22 @@ namespace WindowsNotch
             RefreshList();
             SetStatus("", isError: false);
             ItemsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private static bool IsInteractive(DependencyObject? obj)
+        {
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.TextBox ||
+                    obj is System.Windows.Controls.Primitives.ScrollBar ||
+                    obj is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private static DroppedFileItem? GetItem(object sender)
