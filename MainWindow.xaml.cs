@@ -273,7 +273,7 @@ namespace WindowsNotch
             NotchiButton.Click += (s, e) =>
             {
                 AnimateNotchiIcon();
-                ShowStatusPopup("Notchi v1.1.0", isError: false);
+                RestartApplication();
             };
             FileButton.Click += OnFileButtonClick;
             NoteButton.Click += OnNoteButtonClick;
@@ -408,6 +408,42 @@ namespace WindowsNotch
         }
 
         // ===================== Bar Menu Fitur =====================
+
+        private void RestartApplication()
+        {
+            try
+            {
+                ShowStatusPopup(Localization.Get("RestartingApp"), isError: false);
+
+                string exePath = Environment.ProcessPath
+                    ?? Path.Combine(AppContext.BaseDirectory, "Notchi.exe");
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = exePath,
+                    UseShellExecute = true,
+                    WorkingDirectory = AppContext.BaseDirectory
+                };
+
+                // Beri sedikit jeda agar animasi putaran icon dan popup terbaca oleh user
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+                timer.Tick += (s, e) =>
+                {
+                    timer.Stop();
+                    try
+                    {
+                        System.Diagnostics.Process.Start(psi);
+                    }
+                    catch { }
+                    Application.Current.Shutdown();
+                };
+                timer.Start();
+            }
+            catch
+            {
+                Application.Current.Shutdown();
+            }
+        }
 
         private void AnimateNotchiIcon()
         {

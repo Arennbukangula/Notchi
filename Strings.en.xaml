@@ -94,7 +94,9 @@
     <sys:String x:Key="HotkeySection">SHORTCUT</sys:String>
     <sys:String x:Key="HotkeyTitle">Hide / show</sys:String>
     <sys:String x:Key="HotkeyDescription">Click to change shortcut</sys:String>
-    <sys:String x:Key="HotkeyRecording">Press combo...</sys:String>
+    <sys:String x:Key="HotkeyRecording">Press combo...</sys:String>
+    <sys:String x:Key="RestartApp">Restart Notchi</sys:String>
+    <sys:String x:Key="RestartingApp">Restarting Notchi...</sys:String>
 
 </ResourceDictionary>
 

@@ -863,7 +863,7 @@
             <StackPanel x:Name="FeatureMenuPanel" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="NotchiButton"
                         Style="{StaticResource FeatureMenuIconButton}"
-                        ToolTip="Notchi">
+                        ToolTip="{DynamicResource RestartApp}">
                     <Border Width="20" Height="20" CornerRadius="10"
                             Background="#FFFFFF"
                             SnapsToDevicePixels="True"
