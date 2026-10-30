@@ -41,6 +41,21 @@ namespace WindowsNotch
             EnglishOption.Checked += OnLanguageChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
 
+            HeaderRow.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Left)
+                {
+                    try { DragMove(); } catch (InvalidOperationException) { }
+                }
+            };
+            CardBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton != MouseButton.Left) return;
+                if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+
+                try { DragMove(); } catch (InvalidOperationException) { }
+            };
+
             HotkeyRecorder.MouseLeftButtonDown += OnHotkeyRecorderClick;
 
             Activated += (s, e) => _isReady = true;
@@ -70,6 +85,23 @@ namespace WindowsNotch
             _isRecordingHotkey = true;
             HotkeyLabel.Text = Localization.Get("HotkeyRecording");
             HotkeyRecorder.BorderBrush = AccentBrush;
+            e.Handled = true;
+        }
+
+        private static bool IsInteractive(DependencyObject? obj)
+        {
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.TextBox ||
+                    obj is System.Windows.Controls.Primitives.ScrollBar ||
+                    obj is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private void OnAutoStartToggleChanged(object? sender, RoutedEventArgs e)
