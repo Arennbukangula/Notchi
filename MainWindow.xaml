@@ -842,7 +842,7 @@
                 CornerRadius="17"
                 BorderBrush="#38FFFFFF"
                 BorderThickness="0.8"
-                Padding="6,2"
+                Padding="3,2" ClipToBounds="True"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Top"
                 Margin="0,104,0,0"
@@ -860,7 +860,7 @@
                 <DropShadowEffect BlurRadius="12" ShadowDepth="2"
                                   Opacity="0.45" Color="Black"/>
             </Border.Effect>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel x:Name="FeatureMenuPanel" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="NotchiButton"
                         Style="{StaticResource FeatureMenuIconButton}"
                         ToolTip="Notchi">

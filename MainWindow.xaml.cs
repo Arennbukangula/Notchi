@@ -418,6 +418,9 @@ namespace WindowsNotch
             NotchiIconRotate.BeginAnimation(RotateTransform.AngleProperty, anim);
         }
 
+        private const double FeatureBarCollapsedWidth = 34.0;
+        private const double FeatureBarFullWidth = 162.0;
+
         private void ShowFeatureBar()
         {
             if (_isDragging) return;
@@ -427,12 +430,30 @@ namespace WindowsNotch
             FeatureMenuBar.Visibility = Visibility.Visible;
             FeatureMenuBar.IsHitTestVisible = true;
 
+            // Pastikan animasi sebelumnya dihentikan
+            FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, null);
+            FeatureMenuBar.BeginAnimation(FrameworkElement.WidthProperty, null);
+
+            // Mulai dari icon Notchi bulat di tengah
+            FeatureMenuBar.Opacity = 0;
+            FeatureMenuBar.Width = FeatureBarCollapsedWidth;
+
+            // Fade in bar secara halus
             var fadeAnim = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(180)))
             {
-                BeginTime = TimeSpan.FromMilliseconds(80),
+                BeginTime = TimeSpan.FromMilliseconds(40),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
+
+            // Animasi memanjang melebar (expand) dari 34px ke 162px
+            var expandAnim = new DoubleAnimation(FeatureBarCollapsedWidth, FeatureBarFullWidth, new Duration(TimeSpan.FromMilliseconds(320)))
+            {
+                BeginTime = TimeSpan.FromMilliseconds(90),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
             FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
+            FeatureMenuBar.BeginAnimation(FrameworkElement.WidthProperty, expandAnim);
         }
 
         private void HideFeatureBar(bool immediate = false)
@@ -440,17 +461,28 @@ namespace WindowsNotch
             if (immediate)
             {
                 FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, null);
+                FeatureMenuBar.BeginAnimation(FrameworkElement.WidthProperty, null);
                 FeatureMenuBar.Opacity = 0;
+                FeatureMenuBar.Width = FeatureBarCollapsedWidth;
                 FeatureMenuBar.Visibility = Visibility.Collapsed;
                 FeatureMenuBar.IsHitTestVisible = false;
                 return;
             }
 
             FeatureMenuBar.IsHitTestVisible = false;
-            var fadeAnim = new DoubleAnimation(FeatureMenuBar.Opacity, 0, new Duration(TimeSpan.FromMilliseconds(120)))
+
+            // Animasi menyusut (collapse) kembali ke logo Notchi
+            var shrinkAnim = new DoubleAnimation(FeatureMenuBar.ActualWidth > 0 ? FeatureMenuBar.ActualWidth : FeatureBarFullWidth, FeatureBarCollapsedWidth, new Duration(TimeSpan.FromMilliseconds(160)))
             {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
+
+            var fadeAnim = new DoubleAnimation(FeatureMenuBar.Opacity, 0, new Duration(TimeSpan.FromMilliseconds(140)))
+            {
+                BeginTime = TimeSpan.FromMilliseconds(40),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            };
+
             fadeAnim.Completed += (s, e) =>
             {
                 if (!_isExpanded)
@@ -458,6 +490,8 @@ namespace WindowsNotch
                     FeatureMenuBar.Visibility = Visibility.Collapsed;
                 }
             };
+
+            FeatureMenuBar.BeginAnimation(FrameworkElement.WidthProperty, shrinkAnim);
             FeatureMenuBar.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
         }
 
