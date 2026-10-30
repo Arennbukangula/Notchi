@@ -94,9 +94,16 @@
     <sys:String x:Key="HotkeySection">PINTASAN</sys:String>
     <sys:String x:Key="HotkeyTitle">Sembunyikan / tampilkan</sys:String>
     <sys:String x:Key="HotkeyDescription">Tekan kombinasi untuk mengubah</sys:String>
-    <sys:String x:Key="HotkeyRecording">Tekan kombinasi...</sys:String>
-    <sys:String x:Key="RestartApp">Restart Notchi</sys:String>
-    <sys:String x:Key="RestartingApp">Merestart Notchi...</sys:String>
+    <sys:String x:Key="HotkeyRecording">Tekan kombinasi...</sys:String>
+
+    <sys:String x:Key="RestartApp">Restart Notchi</sys:String>
+
+    <sys:String x:Key="RestartingApp">Merestart Notchi...</sys:String>
+    <sys:String x:Key="CalendarNotePlaceholder">Catatan tanggal ini...</sys:String>
+    <sys:String x:Key="Save">Simpan</sys:String>
+    <sys:String x:Key="Delete">Hapus</sys:String>
+    <sys:String x:Key="CalendarShiftScrollHint">Shift + Scroll untuk geser tanggal</sys:String>
+
 
 </ResourceDictionary>
 

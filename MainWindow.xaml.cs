@@ -139,6 +139,13 @@ namespace WindowsNotch
         private readonly TextBlock[] _calendarWeekdayTexts;
         private readonly Border[] _calendarDayCircles;
         private readonly TextBlock[] _calendarDayTexts;
+        private readonly System.Windows.Shapes.Ellipse[] _calendarNoteDots;
+        private readonly DateTime[] _calendarVisibleDates = new DateTime[7];
+        private int _calendarOffsetDays = 0;
+        private DateTime? _selectedCalendarDate = null;
+        private Dictionary<string, string> _calendarNotes = new();
+        private CalendarNoteWindow? _calendarNoteWindow;
+        private static readonly SolidColorBrush CalendarSelectedBlueBrush = FrozenBrush(0x0A, 0x84, 0xFF);
         private readonly Grid[] _idlePages;
         private readonly TranslateTransform[] _idlePageTransforms;
         private bool _isHidden;
@@ -167,7 +174,8 @@ namespace WindowsNotch
         private bool IsNoteOpen => _noteWindow is { IsVisible: true };
         private bool IsSettingsOpen => _settingsWindow is { IsVisible: true };
         private bool IsShelfOpen => _dropShelf is { IsVisible: true };
-        private bool IsAuxOpen => IsNoteOpen || IsSettingsOpen || IsShelfOpen;
+        private bool IsCalendarNoteOpen => _calendarNoteWindow is { IsVisible: true };
+        private bool IsAuxOpen => IsNoteOpen || IsSettingsOpen || IsShelfOpen || IsCalendarNoteOpen;
 
         private (double Width, double Height) CollapsedSize => IsSideAnchor
             ? (SideCollapsedWidth, SideCollapsedHeight)
@@ -199,6 +207,14 @@ namespace WindowsNotch
                 CalendarDayText3, CalendarDayText4, CalendarDayText5,
                 CalendarDayText6
             };
+            _calendarNoteDots = new[]
+            {
+                CalendarNoteDot0, CalendarNoteDot1, CalendarNoteDot2,
+                CalendarNoteDot3, CalendarNoteDot4, CalendarNoteDot5,
+                CalendarNoteDot6
+            };
+            _calendarNotes = CalendarStore.Load();
+            InitCalendarInteractions();
             _idlePages = new[] { CalendarPage, MediaPage, MetricsPage };
             _idlePageTransforms = new[]
             {
@@ -1580,14 +1596,25 @@ namespace WindowsNotch
             SaveAnchor();
         }
 
-        private static bool IsInteractiveElement(DependencyObject? source)
+        private bool IsInteractiveElement(DependencyObject? source)
         {
             while (source != null)
             {
-                if (source is ButtonBase || source is Slider || source is Thumb)
+                if (source is ButtonBase || source is Slider || source is Thumb || source is TextBox)
                 {
                     return true;
                 }
+
+                if (_calendarDayCircles != null)
+                {
+                    for (int i = 0; i < _calendarDayCircles.Length; i++)
+                    {
+                        if (source == _calendarDayCircles[i]) return true;
+                    }
+                }
+
+                if (source == CalendarMonthText) return true;
+
                 source = VisualTreeHelper.GetParent(source);
             }
             return false;
@@ -2045,48 +2072,179 @@ namespace WindowsNotch
             UpdateCalendar(now);
         }
 
-        // Kalender ringkas: 7 hari berurutan dengan hari ini di kolom tengah.
+        private void InitCalendarInteractions()
+        {
+            for (int i = 0; i < _calendarDayCircles.Length; i++)
+            {
+                int index = i;
+                _calendarDayCircles[index].PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    OnCalendarDayClicked(index);
+                    e.Handled = true;
+                };
+            }
+
+            CalendarMonthText.Cursor = Cursors.Hand;
+            CalendarMonthText.ToolTip = Localization.Get("CalendarShiftScrollHint");
+            CalendarMonthText.MouseLeftButtonDown += (s, e) =>
+            {
+                // Reset tanggal ke hari ini
+                if (_calendarOffsetDays != 0)
+                {
+                    _calendarOffsetDays = 0;
+                    UpdateCalendar(DateTime.Now);
+                    ShowStatusPopup(DateTime.Now.ToString("dd MMMM yyyy", CultureInfo.CurrentCulture), isError: false);
+                    e.Handled = true;
+                }
+            };
+        }
+
+        private void OnCalendarDayClicked(int index)
+        {
+            if (index < 0 || index >= _calendarVisibleDates.Length) return;
+
+            DateTime clickedDate = _calendarVisibleDates[index];
+            _selectedCalendarDate = clickedDate;
+            UpdateCalendar(DateTime.Now);
+
+            ShowCalendarNoteWindow(clickedDate);
+        }
+
+        private void ShowCalendarNoteWindow(DateTime date)
+        {
+            if (_calendarNoteWindow is { IsVisible: true })
+            {
+                _calendarNoteWindow.Close();
+                _calendarNoteWindow = null;
+            }
+
+            string dateKey = date.ToString("yyyy-MM-dd");
+            _calendarNotes.TryGetValue(dateKey, out var currentNote);
+
+            var noteWin = new CalendarNoteWindow(date, currentNote);
+            PositionAuxWindow(noteWin);
+
+            noteWin.Saved += (s, noteText) =>
+            {
+                if (string.IsNullOrEmpty(noteText))
+                {
+                    _calendarNotes.Remove(dateKey);
+                }
+                else
+                {
+                    _calendarNotes[dateKey] = noteText;
+                }
+                CalendarStore.Save(_calendarNotes);
+                UpdateCalendar(DateTime.Now);
+                if (!string.IsNullOrEmpty(noteText))
+                {
+                    ShowStatusPopup($"{date:dd MMM}: {noteText}", isError: false);
+                }
+            };
+
+            noteWin.Deleted += (s, e) =>
+            {
+                _calendarNotes.Remove(dateKey);
+                CalendarStore.Save(_calendarNotes);
+                UpdateCalendar(DateTime.Now);
+            };
+
+            noteWin.Closed += (s, e) =>
+            {
+                _calendarNoteWindow = null;
+                _selectedCalendarDate = null;
+                UpdateCalendar(DateTime.Now);
+                if (!PillHost.IsMouseOver && !FeatureMenuBar.IsMouseOver && !IsAuxOpen)
+                {
+                    _collapseTimer.Stop();
+                    CollapseNotch();
+                }
+            };
+
+            _calendarNoteWindow = noteWin;
+            noteWin.Show();
+            noteWin.Activate();
+        }
+
+        // Kalender ringkas: 7 hari berurutan dengan tanggal referensi di kolom tengah.
         private void UpdateCalendar(DateTime now)
         {
             CultureInfo culture = CultureInfo.CurrentCulture;
-            DateTime start = now.Date.AddDays(-3);
+            DateTime reference = now.Date.AddDays(_calendarOffsetDays);
+            DateTime start = reference.AddDays(-3);
 
-            CalendarMonthText.Text = now.ToString("MMMM yyyy", culture);
+            CalendarMonthText.Text = reference.ToString("MMMM yyyy", culture);
             CalendarClockText.Text = now.ToString("HH:mm", culture);
 
             for (int index = 0; index < _calendarDayTexts.Length; index++)
             {
                 DateTime day = start.AddDays(index);
+                _calendarVisibleDates[index] = day;
+
                 bool isToday = day.Date == now.Date;
-                bool isCurrentMonth = day.Month == now.Month && day.Year == now.Year;
+                bool isSelected = _selectedCalendarDate.HasValue && day.Date == _selectedCalendarDate.Value.Date;
+                bool isCurrentMonth = day.Month == reference.Month && day.Year == reference.Year;
 
                 string weekday = day.ToString("dddd", culture);
                 _calendarWeekdayTexts[index].Text = weekday.Length > 0
                     ? culture.TextInfo.ToUpper(weekday[0]).ToString()
                     : string.Empty;
 
-                // Fokuskan perhatian ke hari ini: makin jauh dari tengah,
-                // makin redup tanggal dan label harinya.
-                double opacity = Math.Max(0.16, 1 - Math.Abs(index - 3) * 0.3);
+                double opacity = Math.Max(0.25, 1 - Math.Abs(index - 3) * 0.25);
                 _calendarWeekdayTexts[index].Opacity = opacity;
                 _calendarDayCircles[index].Opacity = opacity;
 
                 _calendarDayTexts[index].Text = day.Day.ToString(culture);
-                _calendarDayCircles[index].Background = isToday
-                    ? Brushes.White
-                    : Brushes.Transparent;
-                _calendarDayTexts[index].Foreground = isToday
-                    ? CalendarTodayTextBrush
-                    : isCurrentMonth ? CalendarDayBrush : CalendarMutedDayBrush;
-                _calendarDayTexts[index].FontWeight = isToday
-                    ? FontWeights.Bold
-                    : FontWeights.SemiBold;
+
+                // Cek apakah ada catatan untuk tanggal ini
+                string dateKey = day.ToString("yyyy-MM-dd");
+                bool hasNote = _calendarNotes.TryGetValue(dateKey, out var note) && !string.IsNullOrEmpty(note);
+
+                _calendarDayCircles[index].BorderBrush = Brushes.Transparent;
+                if (isToday)
+                {
+                    // Jika hari ini memiliki catatan: lingkaran berubah menjadi biru solid dengan teks putih
+                    _calendarDayCircles[index].Background = hasNote ? CalendarSelectedBlueBrush : Brushes.White;
+                    _calendarDayTexts[index].Foreground = hasNote ? Brushes.White : CalendarTodayTextBrush;
+                    _calendarDayTexts[index].FontWeight = FontWeights.Bold;
+                    // Sembunyikan titik bawah untuk hari ini karena lingkarannya sudah berwarna biru
+                    _calendarNoteDots[index].Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    _calendarDayCircles[index].Background = Brushes.Transparent;
+                    _calendarDayTexts[index].Foreground = isCurrentMonth ? CalendarDayBrush : CalendarMutedDayBrush;
+                    _calendarDayTexts[index].FontWeight = FontWeights.SemiBold;
+                    _calendarNoteDots[index].Visibility = hasNote ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                if (hasNote)
+                {
+                    _calendarDayCircles[index].ToolTip = $"{day:d MMMM yyyy}\n{note}";
+                }
+                else
+                {
+                    _calendarDayCircles[index].ToolTip = day.ToString("d MMMM yyyy", culture);
+                }
             }
         }
 
         private void OnPillMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (!_isExpanded || e.Delta == 0) return;
+
+            // Opsi 4: Shift + Scroll Wheel untuk geser tanggal kalender
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0 && _idlePage == IdleCalendarPage)
+            {
+                e.Handled = true;
+                int daysShift = e.Delta < 0 ? 7 : -7; // Geser seminggu ke depan / belakang
+                _calendarOffsetDays += daysShift;
+                UpdateCalendar(DateTime.Now);
+
+                DateTime currentRef = DateTime.Now.Date.AddDays(_calendarOffsetDays);
+                ShowStatusPopup(currentRef.ToString("MMMM yyyy", CultureInfo.CurrentCulture), isError: false);
+                return;
+            }
 
             int targetPage = e.Delta < 0
                 ? Math.Min(IdleMetricsPage, _idlePage + 1)
