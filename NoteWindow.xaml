@@ -38,7 +38,7 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="#1C1C1E" BorderBrush="#2E2E30" BorderThickness="1"
+    <Border x:Name="CardBorder" Background="#1C1C1E" BorderBrush="#2E2E30" BorderThickness="1"
             CornerRadius="12" Padding="12">
         <Border.Effect>
             <DropShadowEffect BlurRadius="16" ShadowDepth="4"
@@ -52,7 +52,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Grid>
+                <Grid x:Name="HeaderRow" Background="Transparent" Cursor="SizeAll">
                     <StackPanel x:Name="HeaderTitle" Orientation="Horizontal"
                                 VerticalAlignment="Center">
                         <Viewbox Width="14" Height="14" Margin="0,0,7,0">

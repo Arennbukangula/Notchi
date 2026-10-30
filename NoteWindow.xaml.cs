@@ -45,6 +45,21 @@ namespace WindowsNotch
             NoteTextBox.TextChanged += OnNoteTextChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
 
+            HeaderRow.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Left)
+                {
+                    try { DragMove(); } catch (InvalidOperationException) { }
+                }
+            };
+            CardBorder.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton != MouseButton.Left) return;
+                if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+
+                try { DragMove(); } catch (InvalidOperationException) { }
+            };
+
             ResizeGrip.MouseLeftButtonDown += OnResizeGripMouseLeftButtonDown;
             ResizeGrip.MouseMove += OnResizeGripMouseMove;
             ResizeGrip.MouseLeftButtonUp += OnResizeGripMouseLeftButtonUp;
@@ -258,6 +273,22 @@ namespace WindowsNotch
             _isClosing = true;
             _saveTimer.Stop();
             SaveNote();
+        }
+
+        private static bool IsInteractive(DependencyObject? obj)
+        {
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.TextBox ||
+                    obj is System.Windows.Controls.Primitives.ScrollBar ||
+                    obj is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private static string ResolveNotePath()
