@@ -14,6 +14,7 @@
     <sys:String x:Key="Exit">Keluar</sys:String>
 
     <sys:String x:Key="Metrics">METRIK</sys:String>
+    <sys:String x:Key="NoRecentMedia">Belum ada media terakhir</sys:String>
     <sys:String x:Key="Battery">Baterai</sys:String>
     <sys:String x:Key="System">SISTEM</sys:String>
 
@@ -26,6 +27,9 @@
     <sys:String x:Key="LanguageEnglish">English</sys:String>
 
     <sys:String x:Key="DropFilesHere">Lepaskan file di sini</sys:String>
+    <sys:String x:Key="DropToPath">Ke path</sys:String>
+    <sys:String x:Key="DropToConvert">Ke konversi</sys:String>
+    <sys:String x:Key="DropToConvertDownloads">Ke konversi (Downloads)</sys:String>
 
     <sys:String x:Key="NotePlaceholder">Tulis catatan...</sys:String>
     <sys:String x:Key="NewNote">Catatan baru</sys:String>
@@ -44,6 +48,40 @@
     <sys:String x:Key="OpenLimit">Maksimal {0} file dibuka sekaligus</sys:String>
     <sys:String x:Key="RevealFailed">Gagal membuka Explorer</sys:String>
 
+    <sys:String x:Key="Convert">Konversi</sys:String>
+    <sys:String x:Key="ConvertTitle">Konversi</sys:String>
+    <sys:String x:Key="ConvertDropHint">Lepaskan file PDF, DOC, atau DOCX di sini</sys:String>
+    <sys:String x:Key="ConvertChooseFiles">Pilih file</sys:String>
+    <sys:String x:Key="ConvertLegacyDocNote">DOC dikonversi ke PDF. Dokumen legacy kompleks bisa kehilangan format.</sys:String>
+    <sys:String x:Key="ConvertLegacyDocWarning">Konten DOC legacy mungkin dihilangkan atau berubah.</sys:String>
+    <sys:String x:Key="ConvertEmpty">Belum ada file di antrean</sys:String>
+    <sys:String x:Key="ConvertAll">Konversi semua</sys:String>
+    <sys:String x:Key="ConvertSelected">Konversi pilihan</sys:String>
+    <sys:String x:Key="ConvertSelectFile">Pilih untuk dikonversi</sys:String>
+    <sys:String x:Key="ConvertCancel">Batal</sys:String>
+    <sys:String x:Key="ConvertFileFilter">PDF|*.pdf|Word|*.doc;*.docx|Semua file|*.*</sys:String>
+    <sys:String x:Key="ConvertStatusPending">Menunggu</sys:String>
+    <sys:String x:Key="ConvertStatusDone">Selesai</sys:String>
+    <sys:String x:Key="ConvertStatusDoneWithWarnings">Selesai dengan peringatan</sys:String>
+    <sys:String x:Key="ConvertAddedFiles">{0} file ditambahkan</sys:String>
+    <sys:String x:Key="ConvertNoSupportedFiles">Tidak ada file baru yang didukung</sys:String>
+    <sys:String x:Key="ConvertNothingToDo">Tidak ada file yang menunggu konversi</sys:String>
+    <sys:String x:Key="ConvertNoSelection">Pilih minimal satu file untuk dikonversi</sys:String>
+    <sys:String x:Key="ConvertStarted">Mengonversi file...</sys:String>
+    <sys:String x:Key="ConvertSummary">{0} berhasil, {1} gagal</sys:String>
+    <sys:String x:Key="ConvertToPdf">Konversi ke PDF</sys:String>
+    <sys:String x:Key="ConvertToDocx">Konversi ke DOCX</sys:String>
+    <sys:String x:Key="ConvertingTo">Mengonversi ke {0}...</sys:String>
+    <sys:String x:Key="ConvertedTo">Dikonversi ke {0}</sys:String>
+    <sys:String x:Key="ConvertFailed">Konversi gagal</sys:String>
+    <sys:String x:Key="ConvertScannedPdf">PDF ini tidak memiliki lapisan teks (hasil pindai)</sys:String>
+    <sys:String x:Key="ConvertTimeout">Konversi melebihi waktu</sys:String>
+    <sys:String x:Key="ConvertCancelled">Konversi dibatalkan</sys:String>
+    <sys:String x:Key="ConvertBusy">Konversi lain sedang berjalan</sys:String>
+    <sys:String x:Key="ConvertDownloadProgress">Mengonversi {0} ({1}/{2})...</sys:String>
+    <sys:String x:Key="ConvertSavedToDownloads">{0} file tersimpan di Downloads</sys:String>
+    <sys:String x:Key="ConvertSavedPartial">{0} file tersimpan di Downloads, {1} gagal</sys:String>
+
     <sys:String x:Key="Open">Buka</sys:String>
     <sys:String x:Key="RevealInExplorer">Tampilkan di Explorer</sys:String>
     <sys:String x:Key="CopyPath">Salin path</sys:String>
@@ -57,6 +95,15 @@
     <sys:String x:Key="HotkeyTitle">Sembunyikan / tampilkan</sys:String>
     <sys:String x:Key="HotkeyDescription">Tekan kombinasi untuk mengubah</sys:String>
     <sys:String x:Key="HotkeyRecording">Tekan kombinasi...</sys:String>
+
+    <sys:String x:Key="RestartApp">Restart Notchi</sys:String>
+
+    <sys:String x:Key="RestartingApp">Merestart Notchi...</sys:String>
+    <sys:String x:Key="CalendarNotePlaceholder">Catatan tanggal ini...</sys:String>
+    <sys:String x:Key="Save">Simpan</sys:String>
+    <sys:String x:Key="Delete">Hapus</sys:String>
+    <sys:String x:Key="CalendarShiftScrollHint">Shift + Scroll untuk geser tanggal</sys:String>
+
 
 </ResourceDictionary>
 

@@ -25,11 +25,6 @@ namespace WindowsNotch
 
             _settings = settings;
 
-            ShowCpuToggle.IsChecked = settings.ShowCpu;
-            ShowRamToggle.IsChecked = settings.ShowRam;
-            ShowDiskToggle.IsChecked = settings.ShowDisk;
-            ShowBatteryToggle.IsChecked = settings.ShowBattery;
-
             AutoStartToggle.IsChecked = StartupService.IsEnabled();
             _settings.AutoStart = AutoStartToggle.IsChecked == true;
 
@@ -41,14 +36,26 @@ namespace WindowsNotch
             // Tampilkan hotkey saat ini
             HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
 
-            ShowCpuToggle.Click += OnMetricToggleChanged;
-            ShowRamToggle.Click += OnMetricToggleChanged;
-            ShowDiskToggle.Click += OnMetricToggleChanged;
-            ShowBatteryToggle.Click += OnMetricToggleChanged;
             AutoStartToggle.Click += OnAutoStartToggleChanged;
             IndonesianOption.Checked += OnLanguageChanged;
             EnglishOption.Checked += OnLanguageChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
+
+            var headerDrag = new WindowDragHelper(this, HeaderRow);
+            headerDrag.DragEnded += (s, e) =>
+            {
+                _settings.SettingsLeft = Left;
+                _settings.SettingsTop = Top;
+                SettingsStore.Save(_settings);
+            };
+
+            var borderDrag = new WindowDragHelper(this, CardBorder, IsInteractive);
+            borderDrag.DragEnded += (s, e) =>
+            {
+                _settings.SettingsLeft = Left;
+                _settings.SettingsTop = Top;
+                SettingsStore.Save(_settings);
+            };
 
             HotkeyRecorder.MouseLeftButtonDown += OnHotkeyRecorderClick;
 
@@ -79,18 +86,23 @@ namespace WindowsNotch
             _isRecordingHotkey = true;
             HotkeyLabel.Text = Localization.Get("HotkeyRecording");
             HotkeyRecorder.BorderBrush = AccentBrush;
+            e.Handled = true;
         }
 
-        private void OnMetricToggleChanged(object? sender, RoutedEventArgs e)
+        private static bool IsInteractive(DependencyObject? obj)
         {
-            if (_initializing) return;
-
-            _settings.ShowCpu = ShowCpuToggle.IsChecked == true;
-            _settings.ShowRam = ShowRamToggle.IsChecked == true;
-            _settings.ShowDisk = ShowDiskToggle.IsChecked == true;
-            _settings.ShowBattery = ShowBatteryToggle.IsChecked == true;
-
-            SaveSettings();
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.TextBox ||
+                    obj is System.Windows.Controls.Primitives.ScrollBar ||
+                    obj is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private void OnAutoStartToggleChanged(object? sender, RoutedEventArgs e)

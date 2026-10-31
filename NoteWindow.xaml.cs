@@ -29,6 +29,9 @@ namespace WindowsNotch
         private bool _isReady;
         private bool _isClosing;
         private bool _userEdited;
+        private bool _isResizing;
+        private Point _resizeStart;
+        private Size _resizeStartSize;
 
         public NoteWindow()
         {
@@ -41,6 +44,17 @@ namespace WindowsNotch
             _saveTimer.Tick += OnSaveTimerTick;
             NoteTextBox.TextChanged += OnNoteTextChanged;
             CloseButton.Click += (s, e) => CloseFromUser();
+
+            var headerDrag = new WindowDragHelper(this, HeaderRow);
+            headerDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
+
+            var borderDrag = new WindowDragHelper(this, CardBorder, IsInteractive);
+            borderDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
+
+            ResizeGrip.MouseLeftButtonDown += OnResizeGripMouseLeftButtonDown;
+            ResizeGrip.MouseMove += OnResizeGripMouseMove;
+            ResizeGrip.MouseLeftButtonUp += OnResizeGripMouseLeftButtonUp;
+            ResizeGrip.LostMouseCapture += OnResizeGripLostMouseCapture;
 
             Activated += (s, e) => _isReady = true;
             Deactivated += OnDeactivated;
@@ -67,11 +81,49 @@ namespace WindowsNotch
         public string NotePath { get; }
 
         public bool ClosedByUser { get; private set; }
+        public event EventHandler? PositionSaved;
 
         private void CloseFromUser()
         {
             ClosedByUser = true;
             RequestClose();
+        }
+
+        private void OnResizeGripMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left) return;
+
+            _isResizing = true;
+            _resizeStart = e.GetPosition(this);
+            _resizeStartSize = new Size(ActualWidth, ActualHeight);
+            ResizeGrip.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void OnResizeGripMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isResizing || !ResizeGrip.IsMouseCaptured) return;
+
+            Point current = e.GetPosition(this);
+            double width = _resizeStartSize.Width + (current.X - _resizeStart.X);
+            double height = _resizeStartSize.Height + (current.Y - _resizeStart.Y);
+
+            Width = Math.Max(MinWidth, width);
+            Height = Math.Max(MinHeight, height);
+        }
+
+        private void OnResizeGripMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isResizing) return;
+
+            _isResizing = false;
+            ResizeGrip.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+
+        private void OnResizeGripLostMouseCapture(object sender, MouseEventArgs e)
+        {
+            _isResizing = false;
         }
 
         private void OnDeactivated(object? sender, EventArgs e)
@@ -213,6 +265,22 @@ namespace WindowsNotch
             _isClosing = true;
             _saveTimer.Stop();
             SaveNote();
+        }
+
+        private static bool IsInteractive(DependencyObject? obj)
+        {
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.TextBox ||
+                    obj is System.Windows.Controls.Primitives.ScrollBar ||
+                    obj is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private static string ResolveNotePath()

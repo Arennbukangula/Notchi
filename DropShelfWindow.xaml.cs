@@ -36,6 +36,12 @@ namespace WindowsNotch
             OpenAllButton.Click += (s, e) => OpenAll();
             ClearButton.Click += (s, e) => ClearItems();
 
+            var headerDrag = new WindowDragHelper(this, HeaderRow);
+            headerDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
+
+            var borderDrag = new WindowDragHelper(this, CardBorder, IsInteractive);
+            borderDrag.DragEnded += (s, e) => PositionSaved?.Invoke(this, EventArgs.Empty);
+
             Closed += (s, e) => _isClosing = true;
 
             PreviewKeyDown += OnPreviewKeyDown;
@@ -45,6 +51,7 @@ namespace WindowsNotch
         }
 
         public event EventHandler? ItemsChanged;
+        public event EventHandler? PositionSaved;
 
         public IReadOnlyList<string> Paths =>
             _items.Select(item => item.Path).ToList();
@@ -215,6 +222,22 @@ namespace WindowsNotch
             RefreshList();
             SetStatus("", isError: false);
             ItemsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private static bool IsInteractive(DependencyObject? obj)
+        {
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.TextBox ||
+                    obj is System.Windows.Controls.Primitives.ScrollBar ||
+                    obj is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+                obj = VisualTreeHelper.GetParent(obj);
+            }
+            return false;
         }
 
         private static DroppedFileItem? GetItem(object sender)

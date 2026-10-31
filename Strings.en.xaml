@@ -14,6 +14,7 @@
     <sys:String x:Key="Exit">Quit</sys:String>
 
     <sys:String x:Key="Metrics">METRICS</sys:String>
+    <sys:String x:Key="NoRecentMedia">No recent media</sys:String>
     <sys:String x:Key="Battery">Battery</sys:String>
     <sys:String x:Key="System">SYSTEM</sys:String>
 
@@ -26,6 +27,9 @@
     <sys:String x:Key="LanguageEnglish">English</sys:String>
 
     <sys:String x:Key="DropFilesHere">Drop files here</sys:String>
+    <sys:String x:Key="DropToPath">Drop to path</sys:String>
+    <sys:String x:Key="DropToConvert">Drop to convert</sys:String>
+    <sys:String x:Key="DropToConvertDownloads">Convert to Downloads</sys:String>
 
     <sys:String x:Key="NotePlaceholder">Write a note...</sys:String>
     <sys:String x:Key="NewNote">New note</sys:String>
@@ -44,6 +48,40 @@
     <sys:String x:Key="OpenLimit">Up to {0} files can be opened at once</sys:String>
     <sys:String x:Key="RevealFailed">Failed to open Explorer</sys:String>
 
+    <sys:String x:Key="Convert">Convert</sys:String>
+    <sys:String x:Key="ConvertTitle">Convert</sys:String>
+    <sys:String x:Key="ConvertDropHint">Drop PDF, DOC, or DOCX files here</sys:String>
+    <sys:String x:Key="ConvertChooseFiles">Choose files</sys:String>
+    <sys:String x:Key="ConvertLegacyDocNote">DOC is converted to PDF. Complex legacy documents may lose formatting.</sys:String>
+    <sys:String x:Key="ConvertLegacyDocWarning">Legacy DOC content may have been omitted or changed.</sys:String>
+    <sys:String x:Key="ConvertEmpty">No files in the queue</sys:String>
+    <sys:String x:Key="ConvertAll">Convert all</sys:String>
+    <sys:String x:Key="ConvertSelected">Convert selected</sys:String>
+    <sys:String x:Key="ConvertSelectFile">Select for conversion</sys:String>
+    <sys:String x:Key="ConvertCancel">Cancel</sys:String>
+    <sys:String x:Key="ConvertFileFilter">PDF|*.pdf|Word|*.doc;*.docx|All files|*.*</sys:String>
+    <sys:String x:Key="ConvertStatusPending">Pending</sys:String>
+    <sys:String x:Key="ConvertStatusDone">Done</sys:String>
+    <sys:String x:Key="ConvertStatusDoneWithWarnings">Done with warnings</sys:String>
+    <sys:String x:Key="ConvertAddedFiles">Added {0} file(s)</sys:String>
+    <sys:String x:Key="ConvertNoSupportedFiles">No new supported files were added</sys:String>
+    <sys:String x:Key="ConvertNothingToDo">No files are waiting for conversion</sys:String>
+    <sys:String x:Key="ConvertNoSelection">Select at least one file to convert</sys:String>
+    <sys:String x:Key="ConvertStarted">Converting files...</sys:String>
+    <sys:String x:Key="ConvertSummary">{0} converted, {1} failed</sys:String>
+    <sys:String x:Key="ConvertToPdf">Convert to PDF</sys:String>
+    <sys:String x:Key="ConvertToDocx">Convert to DOCX</sys:String>
+    <sys:String x:Key="ConvertingTo">Converting to {0}...</sys:String>
+    <sys:String x:Key="ConvertedTo">Converted to {0}</sys:String>
+    <sys:String x:Key="ConvertFailed">Conversion failed</sys:String>
+    <sys:String x:Key="ConvertScannedPdf">This PDF has no text layer (scanned image)</sys:String>
+    <sys:String x:Key="ConvertTimeout">Conversion timed out</sys:String>
+    <sys:String x:Key="ConvertCancelled">Conversion cancelled</sys:String>
+    <sys:String x:Key="ConvertBusy">A conversion is already running</sys:String>
+    <sys:String x:Key="ConvertDownloadProgress">Converting {0} ({1}/{2})...</sys:String>
+    <sys:String x:Key="ConvertSavedToDownloads">{0} file(s) saved to Downloads</sys:String>
+    <sys:String x:Key="ConvertSavedPartial">{0} file(s) saved to Downloads, {1} failed</sys:String>
+
     <sys:String x:Key="Open">Open</sys:String>
     <sys:String x:Key="RevealInExplorer">Show in Explorer</sys:String>
     <sys:String x:Key="CopyPath">Copy path</sys:String>
@@ -57,6 +95,15 @@
     <sys:String x:Key="HotkeyTitle">Hide / show</sys:String>
     <sys:String x:Key="HotkeyDescription">Click to change shortcut</sys:String>
     <sys:String x:Key="HotkeyRecording">Press combo...</sys:String>
+
+    <sys:String x:Key="RestartApp">Restart Notchi</sys:String>
+
+    <sys:String x:Key="RestartingApp">Restarting Notchi...</sys:String>
+    <sys:String x:Key="CalendarNotePlaceholder">Note for this date...</sys:String>
+    <sys:String x:Key="Save">Save</sys:String>
+    <sys:String x:Key="Delete">Delete</sys:String>
+    <sys:String x:Key="CalendarShiftScrollHint">Shift + Scroll to navigate dates</sys:String>
+
 
 </ResourceDictionary>
 

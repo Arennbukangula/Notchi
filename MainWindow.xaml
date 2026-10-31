@@ -35,6 +35,10 @@
         <SolidColorBrush x:Key="TextSoftBrush" Color="#D0D0D6"/>
         <SolidColorBrush x:Key="TextMutedBrush" Color="#85858D"/>
 
+        <!-- Font kalender: variable display untuk judul, variable text untuk jam -->
+        <FontFamily x:Key="CalendarDisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+        <FontFamily x:Key="CalendarTextFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+
         <!-- Progress media: gradasi biru muda ke biru tua, tanpa ungu -->
         <LinearGradientBrush x:Key="MediaProgressBrush" StartPoint="0,0" EndPoint="1,0">
             <GradientStop Color="#EAF7FF" Offset="0"/>
@@ -202,57 +206,27 @@
             </Setter>
         </Style>
 
-        <!-- Kapsul putih berisi ikon di sisi kanan notch -->
-        <Style x:Key="FeatureIconButton" TargetType="Button">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Focusable" Value="False"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="15" SnapsToDevicePixels="True">
-                            <Image x:Name="IconImage" Source="pack://application:,,,/assets/icon.png"
-                                   Width="18" Height="18" Stretch="Uniform"
-                                   RenderTransformOrigin="0.5,0.5"
-                                   RenderOptions.BitmapScalingMode="HighQuality">
-                                <Image.RenderTransform>
-                                    <RotateTransform x:Name="IconRotate"/>
-                                </Image.RenderTransform>
-                            </Image>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F0F0F0"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#E2E2E2"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Tombol di dalam panel fitur -->
-        <Style x:Key="PanelActionButton" TargetType="Button">
+        <!-- Tombol menu fitur minimalis (ikon saja) -->
+        <Style x:Key="FeatureMenuIconButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="8" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                                CornerRadius="14">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2C2C2E"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3A3A3E"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#3DFFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4"/>
@@ -282,6 +256,23 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Teks kalender idle -->
+        <Style x:Key="CalendarWeekdayText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#9A9AA2"/>
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style x:Key="CalendarDayText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F5F5F7"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
     </Window.Resources>
 
@@ -326,92 +317,369 @@
                                Margin="0,1,0,0"/>
                 </StackPanel>
 
-                <!-- Expanded: jam besar, tanggal, metrik lengkap, baterai -->
+                <!-- Expanded: kalender mingguan dengan hari ini di tengah -->
                 <Grid x:Name="IdleExpandedRoot" Visibility="Collapsed" Margin="8,8,8,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="108"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                    <Border Padding="9,3" Background="Transparent">
+                        <Grid x:Name="IdlePageViewport" ClipToBounds="True">
+                            <!-- Halaman 1: kalender -->
+                            <Grid x:Name="CalendarPage">
+                                <Grid.RenderTransform>
+                                    <TranslateTransform x:Name="CalendarPageTransform"/>
+                                </Grid.RenderTransform>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock x:Name="ExpandedClockText" Text="08:42" Foreground="White"
-                                   FontSize="26" FontWeight="SemiBold" LineHeight="28"/>
-                        <TextBlock x:Name="ExpandedDateText" Text="Senin, 19 Okt 2026"
-                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="9" LineHeight="11"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <StackPanel x:Name="ExpandedBatteryPanel" Orientation="Horizontal"
-                                    Margin="0,10,0,0">
-                            <Border Width="20" Height="10" BorderBrush="#C8C8CC"
-                                    BorderThickness="1" CornerRadius="2" VerticalAlignment="Center">
-                                <Grid Margin="1">
-                                    <Border x:Name="ExpandedBatteryFill" Width="0"
-                                            HorizontalAlignment="Left" Background="#4CD964"
-                                            CornerRadius="1"/>
+                                <Grid>
+                                    <TextBlock x:Name="CalendarMonthText" Text="November 2026"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontFamily="{StaticResource CalendarDisplayFont}"
+                                               FontSize="15" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="CalendarClockText" Text="08:42"
+                                               Foreground="{StaticResource TextSoftBrush}"
+                                               FontFamily="{StaticResource CalendarTextFont}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Typography.NumeralAlignment="Tabular"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"/>
                                 </Grid>
-                            </Border>
-                            <Border Width="2" Height="4" Background="#C8C8CC" CornerRadius="1"
-                                    Margin="1,0,0,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ExpandedBatteryText" Text="82%" Foreground="{StaticResource TextSoftBrush}"
-                                       FontSize="8.5" Margin="4,0,0,0" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </StackPanel>
 
-                    <Grid Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+                                <UniformGrid Grid.Row="1" Columns="7" Margin="0,9,0,0">
+                                    <TextBlock x:Name="CalendarWeekday0" Style="{StaticResource CalendarWeekdayText}"/>
+                                    <TextBlock x:Name="CalendarWeekday1" Style="{StaticResource CalendarWeekdayText}"/>
+                                    <TextBlock x:Name="CalendarWeekday2" Style="{StaticResource CalendarWeekdayText}"/>
+                                    <TextBlock x:Name="CalendarWeekday3" Style="{StaticResource CalendarWeekdayText}"/>
+                                    <TextBlock x:Name="CalendarWeekday4" Style="{StaticResource CalendarWeekdayText}"/>
+                                    <TextBlock x:Name="CalendarWeekday5" Style="{StaticResource CalendarWeekdayText}"/>
+                                    <TextBlock x:Name="CalendarWeekday6" Style="{StaticResource CalendarWeekdayText}"/>
+                                </UniformGrid>
 
-                        <Grid x:Name="ExpandedCpuRow" Height="15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="32"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="32"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="CPU" Foreground="{StaticResource TextSecondaryBrush}" FontSize="8"
-                                       VerticalAlignment="Center"/>
-                            <ProgressBar x:Name="ExpandedCpuBar" Grid.Column="1"
-                                         Style="{StaticResource MetricBar}"
-                                         Margin="6,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ExpandedCpuText" Grid.Column="2" Text="--%"
-                                       Foreground="{StaticResource TextSoftBrush}" FontSize="8.5"
-                                       TextAlignment="Right" VerticalAlignment="Center"/>
+                                <UniformGrid Grid.Row="2" Columns="7" Margin="0,3,0,0">
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle0" Width="26" Height="26"
+                                                CornerRadius="13" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText0" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot0" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,1"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle1" Width="26" Height="26"
+                                                CornerRadius="13" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText1" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot1" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,1"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle2" Width="26" Height="26"
+                                                CornerRadius="13" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText2" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot2" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,1"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle3" Width="28" Height="28"
+                                                CornerRadius="14" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText3" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot3" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,0"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle4" Width="26" Height="26"
+                                                CornerRadius="13" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText4" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot4" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,1"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle5" Width="26" Height="26"
+                                                CornerRadius="13" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText5" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot5" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,1"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Grid Width="28" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border x:Name="CalendarDayCircle6" Width="26" Height="26"
+                                                CornerRadius="13" Background="Transparent"
+                                                BorderBrush="Transparent" BorderThickness="1.5"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                Cursor="Hand">
+                                            <TextBlock x:Name="CalendarDayText6" Style="{StaticResource CalendarDayText}"/>
+                                        </Border>
+                                        <Ellipse x:Name="CalendarNoteDot6" Width="4" Height="4"
+                                                 Fill="#0A84FF" HorizontalAlignment="Center"
+                                                 VerticalAlignment="Bottom" Margin="0,0,0,1"
+                                                 Visibility="Collapsed"/>
+                                    </Grid>
+                                </UniformGrid>
+                            </Grid>
+
+                            <!-- Halaman 2: media player terakhir -->
+                            <Grid x:Name="MediaPage" Opacity="0">
+                                <Grid.RenderTransform>
+                                    <TranslateTransform x:Name="MediaPageTransform"/>
+                                </Grid.RenderTransform>
+
+                                <Grid x:Name="LastMediaContent" Visibility="Collapsed">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="34"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border x:Name="LastMediaArtBorder" Width="32" Height="32"
+                                                CornerRadius="8" Background="#2B2B2B"
+                                                Margin="0,0,10,0"
+                                                VerticalAlignment="Center">
+                                            <Grid>
+                                                <TextBlock x:Name="LastMediaArtPlaceholder" Text="&#x266A;"
+                                                           FontSize="15"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                                <Image x:Name="LastMediaArt" Stretch="UniformToFill"
+                                                       Visibility="Collapsed">
+                                                    <Image.Clip>
+                                                        <RectangleGeometry Rect="0,0,32,32"
+                                                                           RadiusX="8" RadiusY="8"/>
+                                                    </Image.Clip>
+                                                </Image>
+                                            </Grid>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" Margin="0,0,8,0"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock x:Name="LastMediaTitle"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       FontSize="12" FontWeight="SemiBold"
+                                                       LineHeight="15"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="LastMediaArtist"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="9.5" LineHeight="12"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <Border x:Name="LastMediaSourceIcon" Grid.Column="2"
+                                                Width="18" Height="18" CornerRadius="9"
+                                                Background="#1DB954"
+                                                VerticalAlignment="Center">
+                                            <Grid>
+                                                <Image x:Name="LastMediaSourceLogo" Width="18" Height="18"
+                                                       Stretch="Uniform" Visibility="Collapsed"/>
+                                                <TextBlock x:Name="LastMediaSourceGlyph" Text="&#x266A;"
+                                                           FontSize="10" Foreground="White"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <Grid x:Name="LastMediaProgressRow" Grid.Row="1" Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="LastMediaPositionText" Text="0:00"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="8.5" VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                                        <Slider x:Name="LastMediaProgressSlider" Grid.Column="1"
+                                                Style="{StaticResource SlimSlider}"
+                                                Minimum="0" Maximum="1" Value="0" Height="10"
+                                                VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="LastMediaDurationText" Grid.Column="2" Text="--:--"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="8.5" VerticalAlignment="Center"
+                                                   Margin="8,0,0,0"/>
+                                    </Grid>
+
+                                    <StackPanel x:Name="LastMediaControlsRow" Grid.Row="2"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Center"
+                                                Margin="0,6,0,0">
+                                        <Button x:Name="LastMediaPrevButton"
+                                                Style="{StaticResource IconButton}" Padding="6,3">
+                                            <Viewbox Width="18" Height="12" Stretch="Uniform">
+                                                <Path Fill="White"
+                                                      Data="M0,0 h3 v14 h-3 z M5,7 L12,0 L12,14 z M13,7 L20,0 L20,14 z"/>
+                                            </Viewbox>
+                                        </Button>
+                                        <Button x:Name="LastMediaPlayPauseButton"
+                                                Style="{StaticResource IconButton}" Padding="7,3">
+                                            <Viewbox Width="11" Height="13" Stretch="Uniform">
+                                                <Path x:Name="LastMediaPlayPausePath" Fill="White"
+                                                      Data="M0,0 L12,7 L0,14 z"/>
+                                            </Viewbox>
+                                        </Button>
+                                        <Button x:Name="LastMediaNextButton"
+                                                Style="{StaticResource IconButton}" Padding="6,3">
+                                            <Viewbox Width="18" Height="12" Stretch="Uniform">
+                                                <Path Fill="White"
+                                                      Data="M17,0 h3 v14 h-3 z M8,0 L15,7 L8,14 z M0,0 L7,7 L0,14 z"/>
+                                            </Viewbox>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel x:Name="LastMediaEmptyPanel"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="&#x266A;" FontSize="20"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource NoRecentMedia}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="9.5" Margin="0,4,0,0"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Halaman 3: metrik sistem -->
+                            <Grid x:Name="MetricsPage" Opacity="0">
+                                <Grid.RenderTransform>
+                                    <TranslateTransform x:Name="MetricsPageTransform"/>
+                                </Grid.RenderTransform>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid>
+                                    <TextBlock Text="{DynamicResource Metrics}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="9.5" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <StackPanel x:Name="ExpandedBatteryPanel"
+                                                Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <Border Width="20" Height="10" BorderBrush="#C8C8CC"
+                                                BorderThickness="1" CornerRadius="2"
+                                                VerticalAlignment="Center">
+                                            <Grid Margin="1">
+                                                <Border x:Name="ExpandedBatteryFill" Width="0"
+                                                        HorizontalAlignment="Left" Background="#4CD964"
+                                                        CornerRadius="1"/>
+                                            </Grid>
+                                        </Border>
+                                        <Border Width="2" Height="4" Background="#C8C8CC" CornerRadius="1"
+                                                Margin="1,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="ExpandedBatteryText" Text="82%"
+                                                   Foreground="{StaticResource TextSoftBrush}"
+                                                   FontSize="8.5" Margin="4,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid x:Name="ExpandedCpuRow" Grid.Row="1"
+                                      Height="16" Margin="0,9,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="34"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="CPU" Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="9.5" VerticalAlignment="Center"/>
+                                    <ProgressBar x:Name="ExpandedCpuBar" Grid.Column="1"
+                                                 Style="{StaticResource MetricBar}"
+                                                 Height="4" Margin="6,0"
+                                                 VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ExpandedCpuText" Grid.Column="2" Text="--%"
+                                               Foreground="{StaticResource TextSoftBrush}"
+                                               FontSize="9.5" TextAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid x:Name="ExpandedRamRow" Grid.Row="2"
+                                      Height="16" Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="34"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="RAM" Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="9.5" VerticalAlignment="Center"/>
+                                    <ProgressBar x:Name="ExpandedRamBar" Grid.Column="1"
+                                                 Style="{StaticResource MetricBar}"
+                                                 Height="4" Margin="6,0"
+                                                 VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ExpandedRamText" Grid.Column="2" Text="--%"
+                                               Foreground="{StaticResource TextSoftBrush}"
+                                               FontSize="9.5" TextAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Grid x:Name="ExpandedDiskRow" Grid.Row="3"
+                                      Height="16" Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="34"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="ExpandedDiskLabel" Text="C:"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="9.5" VerticalAlignment="Center"/>
+                                    <ProgressBar x:Name="ExpandedDiskBar" Grid.Column="1"
+                                                 Style="{StaticResource MetricBar}"
+                                                 Height="4" Margin="6,0"
+                                                 VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ExpandedDiskText" Grid.Column="2" Text="--%"
+                                               Foreground="{StaticResource TextSoftBrush}"
+                                               FontSize="9.5" TextAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Grid>
                         </Grid>
-
-                        <Grid x:Name="ExpandedRamRow" Grid.Row="1" Height="15" Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="32"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="32"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="RAM" Foreground="{StaticResource TextSecondaryBrush}" FontSize="8"
-                                       VerticalAlignment="Center"/>
-                            <ProgressBar x:Name="ExpandedRamBar" Grid.Column="1"
-                                         Style="{StaticResource MetricBar}"
-                                         Margin="6,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ExpandedRamText" Grid.Column="2" Text="--%"
-                                       Foreground="{StaticResource TextSoftBrush}" FontSize="8.5"
-                                       TextAlignment="Right" VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <Grid x:Name="ExpandedDiskRow" Grid.Row="2" Height="15" Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="32"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="32"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="ExpandedDiskLabel" Text="C:" Foreground="{StaticResource TextSecondaryBrush}"
-                                       FontSize="8" VerticalAlignment="Center"/>
-                            <ProgressBar x:Name="ExpandedDiskBar" Grid.Column="1"
-                                         Style="{StaticResource MetricBar}"
-                                         Margin="6,0" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ExpandedDiskText" Grid.Column="2" Text="--%"
-                                       Foreground="{StaticResource TextSoftBrush}" FontSize="8.5"
-                                       TextAlignment="Right" VerticalAlignment="Center"/>
-                        </Grid>
-
-                    </Grid>
+                    </Border>
                 </Grid>
             </Grid>
 
@@ -569,127 +837,199 @@
                 BorderThickness="1.5" CornerRadius="18"
                 IsHitTestVisible="False" Panel.ZIndex="5"
                 Visibility="Collapsed">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                <Viewbox Width="12" Height="12" Margin="0,0,6,0">
-                    <Path Data="M1.5,4 H6 L7.2,5.2 H11.5 V10.5 H1.5 Z"
-                          Stroke="#F5F5F7" StrokeThickness="1.3"
-                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          StrokeLineJoin="Round" Fill="Transparent"/>
-                </Viewbox>
-                <TextBlock Text="{DynamicResource DropFilesHere}" Foreground="{StaticResource TextPrimaryBrush}"
-                           FontSize="10" FontWeight="SemiBold"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="DropConvertZone" Background="Transparent"
+                        CornerRadius="17,0,0,17">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <Viewbox x:Name="DropConvertIcon" Width="12" Height="12"
+                                 Margin="0,0,6,0">
+                            <Path Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H8 M4.8,9.5 H9.4 M7.2,7.3 L9.4,9.5 L7.2,11.7"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                        <TextBlock x:Name="DropConvertLabel"
+                                   Text="{DynamicResource DropToConvertDownloads}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="9.5" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="DropPathZone" Grid.Column="1"
+                        Background="Transparent" CornerRadius="0,17,17,0">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <Viewbox x:Name="DropPathIcon" Width="12" Height="12"
+                                 Margin="0,0,6,0">
+                            <Path Data="M1.5,4 H6 L7.2,5.2 H11.5 V10.5 H1.5 Z"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                        <TextBlock x:Name="DropPathLabel"
+                                   Text="{DynamicResource DropToPath}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="9.5" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.ColumnSpan="2" Width="1" Margin="0,9"
+                        HorizontalAlignment="Center" Background="#3A3A3E"
+                        Opacity="0.8"/>
+            </Grid>
         </Border>
         </Grid>
 
-        <!-- Kapsul putih berisi icon.png, menempel di sisi kanan notch -->
-        <Button x:Name="FeatureButton" Width="30" Height="30"
-                HorizontalAlignment="Left" VerticalAlignment="Top"
-                Margin="0,5,0,0" Panel.ZIndex="10"
-                Style="{StaticResource FeatureIconButton}"/>
+        <!-- Bar menu fitur minimalis di bawah notch -->
+        <Border x:Name="FeatureMenuBar"
+                Height="34"
+                CornerRadius="17"
+                BorderBrush="#38FFFFFF"
+                BorderThickness="0.8"
+                Padding="3,2" ClipToBounds="True"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,104,0,0"
+                Opacity="0"
+                Visibility="Collapsed">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#F5070708" Offset="0"/>
+                    <GradientStop Color="#F508080B" Offset="0.45"/>
+                    <GradientStop Color="#ED0B0914" Offset="0.75"/>
+                    <GradientStop Color="#E6110E22" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2"
+                                  Opacity="0.45" Color="Black"/>
+            </Border.Effect>
+            <StackPanel x:Name="FeatureMenuPanel" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="NotchiButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        ToolTip="{DynamicResource RestartApp}">
+                    <Border Width="20" Height="20" CornerRadius="10"
+                            Background="#FFFFFF"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Source="pack://application:,,,/assets/icon.ico"
+                               Width="13" Height="13"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="NotchiIconRotate"/>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Border>
+                </Button>
+                <Button x:Name="FileButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource FileTitle}">
+                    <Border x:Name="FileIconBorder"
+                            Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path x:Name="FileIconPath"
+                                  Data="M1.5,3 H5.5 L7,4.5 H12.5 V11.5 H1.5 Z"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+                <Button x:Name="NoteButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource Notes}">
+                    <Border x:Name="NoteIconBorder"
+                            Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path x:Name="NoteIconPath"
+                                  Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H9 M4,9 H9"
+                                  Stroke="#F5F5F7" StrokeThickness="1.3"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Fill="Transparent"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+                <Button x:Name="SettingsButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource Settings}">
+                    <Border x:Name="SettingsIconBorder"
+                            Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path x:Name="SettingsIconPath"
+                                  Data="F0 M12,15.5 A3.5,3.5 0 1 0 12,8.5 A3.5,3.5 0 0 0 12,15.5 Z M19.43,12.98 C19.47,12.66 19.5,12.34 19.5,12 C19.5,11.66 19.47,11.34 19.43,11.02 L21.54,9.37 C21.73,9.22 21.78,8.95 21.66,8.73 L19.66,5.27 C19.54,5.05 19.27,4.96 19.05,5.05 L16.56,6.05 C16.04,5.65 15.48,5.32 14.87,5.07 L14.49,2.42 C14.46,2.18 14.25,2 14,2 L10,2 C9.75,2 9.54,2.18 9.51,2.42 L9.13,5.07 C8.52,5.32 7.96,5.66 7.44,6.05 L4.95,5.05 C4.73,4.96 4.46,5.05 4.34,5.27 L2.34,8.73 C2.21,8.95 2.27,9.22 2.46,9.37 L4.57,11.02 C4.53,11.34 4.5,11.67 4.5,12 C4.5,12.33 4.53,12.66 4.57,12.98 L2.46,14.63 C2.27,14.78 2.21,15.05 2.34,15.27 L4.34,18.73 C4.46,18.95 4.73,19.03 4.95,18.95 L7.44,17.95 C7.96,18.35 8.52,18.68 9.13,18.93 L9.51,21.58 C9.54,21.82 9.75,22 10,22 L14,22 C14.25,22 14.46,21.82 14.49,21.58 L14.87,18.93 C15.48,18.68 16.04,18.34 16.56,17.95 L19.05,18.95 C19.27,19.04 19.54,18.95 19.66,18.73 L21.66,15.27 C21.78,15.05 21.73,14.78 21.54,14.63 L19.43,12.98 Z"
+                                  Fill="#F5F5F7"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+                <Button x:Name="ExitButton"
+                        Style="{StaticResource FeatureMenuIconButton}"
+                        Margin="4,0,0,0"
+                        ToolTip="{DynamicResource Exit}">
+                    <Border Width="20" Height="20" CornerRadius="10"
+                            Background="Transparent"
+                            SnapsToDevicePixels="True"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M6,1 L6,6 M2.8,2.8 A5,5 0 1 0 9.2,2.8"
+                                  Stroke="#F5F5F7" StrokeThickness="1.4"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Fill="Transparent"/>
+                        </Viewbox>
+                    </Border>
+                </Button>
+            </StackPanel>
+        </Border>
 
-        <!-- Panel fitur yang meluncur ke kanan -->
-        <Popup x:Name="FeaturePopup"
-               PlacementTarget="{Binding ElementName=FeatureButton}"
-               Placement="Right"
-               HorizontalOffset="8"
-               VerticalOffset="-1"
+        <Popup x:Name="StatusPopup"
+               PlacementTarget="{Binding ElementName=PillHost}"
+               Placement="Bottom"
+               HorizontalOffset="0"
+               VerticalOffset="8"
                AllowsTransparency="True"
-               PopupAnimation="None"
+               PopupAnimation="Fade"
                StaysOpen="True"
                Focusable="False">
-            <Border x:Name="FeaturePanelCard" Background="#1C1C1E"
-                    BorderBrush="#2E2E30" BorderThickness="1"
-                    CornerRadius="10" Padding="3">
+            <Border x:Name="StatusPopupCard" Background="#E61C1C1E"
+                    BorderBrush="#3D7EFF" BorderThickness="1"
+                    CornerRadius="8" Padding="10,6"
+                    IsHitTestVisible="False">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="12" ShadowDepth="3"
                                       Opacity="0.35" Color="Black"/>
                 </Border.Effect>
-                <StackPanel>
-                    <Button x:Name="FileButton" MinWidth="96" Padding="12,6"
-                            IsEnabled="False"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M1.5,3 H6 L7.5,4.5 H12.5 V11.5 H1.5 Z"
-                                      Stroke="#F5F5F7" StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round" Fill="Transparent"/>
-                            </Viewbox>
-                            <TextBlock x:Name="FileMenuLabel" Grid.Column="1" Text="{DynamicResource FileTitle}"
-                                       Foreground="{StaticResource TextPrimaryBrush}" FontSize="11.5"
-                                       FontWeight="SemiBold" Margin="8,0,0,0"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button x:Name="NoteButton" MinWidth="96" Padding="12,6"
-                            Margin="0,2,0,0"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M2,1.5 H8.5 L11,4 V12.5 H2 Z M8.5,1.5 V4 H11 M4,6.5 H9 M4,9 H9"
-                                      Stroke="#F5F5F7" StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      StrokeLineJoin="Round" Fill="Transparent"/>
-                            </Viewbox>
-                            <TextBlock Grid.Column="1" Text="{DynamicResource Notes}" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontSize="11.5" FontWeight="SemiBold"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button x:Name="SettingsButton" MinWidth="96" Padding="12,6"
-                            Margin="0,2,0,0"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M1,3 H13 M1,7 H13 M1,11 H13 M4,1.5 V4.5 M9,5.5 V8.5 M5,9.5 V12.5"
-                                      Stroke="#F5F5F7" StrokeThickness="1.3"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                            </Viewbox>
-                            <TextBlock Grid.Column="1" Text="{DynamicResource Settings}" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontSize="11.5" FontWeight="SemiBold"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button x:Name="ExitButton" MinWidth="96" Padding="12,6"
-                            Margin="0,2,0,0"
-                            Style="{StaticResource PanelActionButton}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="13"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Viewbox Grid.Column="0" Width="13" Height="13"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Path Data="M6,1 L6,6 M2.8,2.8 A5,5 0 1 0 9.2,2.8"
-                                      Stroke="#F5F5F7" StrokeThickness="1.4"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      Fill="Transparent"/>
-                            </Viewbox>
-                            <TextBlock Grid.Column="1" Text="{DynamicResource Exit}" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontSize="11.5" FontWeight="SemiBold"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                </StackPanel>
+                <TextBlock x:Name="StatusPopupText" Foreground="#F5F5F7"
+                           FontSize="10" FontWeight="SemiBold"
+                           MaxWidth="320" TextWrapping="Wrap"/>
             </Border>
         </Popup>
+        
     </Grid>
 </Window>
+

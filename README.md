@@ -23,6 +23,10 @@ Notchi is a native notch overlay for Windows 10 and Windows 11, inspired by the 
 
 The release installer is per-user and does not require administrator privileges.
 
+## Installation
+
+Download the latest `NotchiSetup-x64.exe` from the [Releases](https://github.com/risuunava/Notchi/releases/latest) page and run it, then launch Notchi from the Start menu. SHA-256 checksums for each release are published in the release notes.
+
 ## Features
 
 | Feature | Description |
@@ -30,12 +34,13 @@ The release installer is per-user and does not require administrator privileges.
 | Always-on-top overlay | Keeps the notch visible above other windows without appearing in the taskbar. |
 | Compact and expanded modes | Stays compact while idle and expands smoothly when the cursor moves over it. |
 | Media controls | Integrates with Windows System Media Transport Controls for track title, artist, album art, source app, elapsed time, duration, seeking, play/pause, and previous/next. |
-| System dashboard | Displays the clock, date, battery status, and live CPU, RAM, and disk usage. |
+| System dashboard | Displays a clean compact clock with a subtle time gradient, date, battery status, and live CPU, RAM, and disk usage. |
 | Notes | Provides a dedicated notes window with automatic saving. |
-| File drop shelf | Accepts files dragged onto the notch and supports opening files, revealing them in Explorer, copying paths, opening all items, and clearing the list. |
+| File drop shelf | Accepts files dragged onto the notch and supports opening files, revealing them in Explorer, copying paths, opening all items, removing individual items, and clearing the list. |
 | Screen anchoring | Lets the notch be dragged to the top center, left center, or right center of the screen. |
 | Persistent position | Saves the last anchor and restores it on the next launch. |
-| Settings | Controls which system metrics are visible and whether the app starts with Windows. |
+| Global shortcut | Hides or shows the notch from anywhere using a customizable system-wide shortcut (default `Ctrl+Shift+N`). |
+| Settings | Controls which system metrics are visible, the interface language (Bahasa Indonesia or English), the hide/show shortcut, and whether the app starts with Windows. |
 | Lightweight design | Uses native WPF rendering with low idle CPU usage and private memory below 100 MB. |
 
 ## Preview
@@ -73,9 +78,9 @@ The screenshots below show the compact and expanded states of the main views.
 
 | Version | Released | Status |
 | :--- | :--- | :--- |
-| 1.0.1 | October 21, 2026 | Latest stable |
+| 1.1.0 | October 25, 2026 | Latest stable |
 
-Version 1.0.1 is the current stable release, focused on stability, safer note storage, and a more complete installer experience. Full release notes are available on the [Releases](https://github.com/risuunava/Notchi/releases) page.
+Version 1.1.0 is the current stable release. It adds a customizable global shortcut to hide or show Notchi (default `Ctrl+Shift+N`), per-item removal in the file drop shelf, and an English language option in Settings, along with a cleaner compact clock that uses a subtle time gradient. Full release notes are available on the [Releases](https://github.com/risuunava/Notchi/releases) page.
 
 ## Contributing
 
@@ -95,17 +100,6 @@ Developer: **risuunava**
   <a href="mailto:risuunava@gmail.com"><img src="https://img.shields.io/badge/Email-risuunava%40gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" /></a>
   <a href="https://github.com/risuunava/Notchi"><img src="https://img.shields.io/badge/Repository-Notchi-3D7EFF?style=for-the-badge&logo=github&logoColor=white" alt="Repository" /></a>
 </p>
-
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
-
-- Authors and reviewers: [risuunava](https://github.com/risuunava) and contributors listed in [CONTRIBUTORS.md](CONTRIBUTORS.md)
-- Approvers: [risuunava](https://github.com/risuunava)
-
-### Privacy policy
-
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
 
 ## License
 

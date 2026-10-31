@@ -23,6 +23,10 @@ Notchi adalah overlay notch native untuk Windows 10 dan Windows 11 yang terinspi
 
 Installer rilis bersifat per-user dan tidak memerlukan hak administrator.
 
+## Instalasi
+
+Unduh `NotchiSetup-x64.exe` versi terbaru dari halaman [Releases](https://github.com/risuunava/Notchi/releases/latest), jalankan installer, lalu buka Notchi dari Start menu. Checksum SHA-256 untuk setiap rilis tersedia di catatan rilis.
+
 ## Fitur
 
 | Fitur | Deskripsi |
@@ -30,12 +34,13 @@ Installer rilis bersifat per-user dan tidak memerlukan hak administrator.
 | Overlay selalu di atas | Menjaga notch tetap terlihat di atas jendela lain tanpa muncul di taskbar. |
 | Mode ringkas dan mengembang | Tampil ringkas saat idle dan mengembang dengan animasi halus saat kursor diarahkan. |
 | Kontrol media | Terintegrasi dengan Windows System Media Transport Controls untuk judul lagu, artis, album art, aplikasi sumber, waktu berjalan, durasi, seek, play/pause, serta previous/next. |
-| Dashboard sistem | Menampilkan jam, tanggal, status baterai, dan penggunaan CPU, RAM, serta disk secara langsung. |
+| Dashboard sistem | Menampilkan jam ringkas yang bersih dengan gradasi halus pada waktu, tanggal, status baterai, serta penggunaan CPU, RAM, dan disk secara langsung. |
 | Catatan | Menyediakan jendela catatan khusus dengan penyimpanan otomatis. |
-| File drop shelf | Menerima file yang ditarik ke notch dan mendukung membuka file, menampilkan di Explorer, menyalin path, membuka semua item, serta membersihkan daftar. |
+| File drop shelf | Menerima file yang ditarik ke notch dan mendukung membuka file, menampilkan di Explorer, menyalin path, membuka semua item, menghapus item satu per satu, serta membersihkan daftar. |
 | Penempatan di layar | Notch dapat digeser ke atas tengah, kiri tengah, atau kanan tengah layar. |
 | Posisi tersimpan | Menyimpan anchor terakhir dan memulihkannya saat aplikasi dibuka kembali. |
-| Pengaturan | Mengatur metrik sistem yang ditampilkan dan apakah aplikasi berjalan otomatis saat Windows menyala. |
+| Pintasan global | Menyembunyikan atau menampilkan notch dari mana saja menggunakan pintasan sistem yang dapat disesuaikan (default `Ctrl+Shift+N`). |
+| Pengaturan | Mengatur metrik sistem yang ditampilkan, bahasa antarmuka (Bahasa Indonesia atau English), pintasan sembunyikan/tampilkan, dan apakah aplikasi berjalan otomatis saat Windows menyala. |
 | Desain ringan | Menggunakan rendering native WPF dengan pemakaian CPU idle rendah dan memori privat di bawah 100 MB. |
 
 ## Tampilan
@@ -73,9 +78,9 @@ Tangkapan layar berikut menunjukkan tampilan ringkas dan mengembang dari setiap 
 
 | Versi | Tanggal Rilis | Status |
 | :--- | :--- | :--- |
-| 1.0.1 | 21 Oktober 2026 | Stabil terbaru |
+| 1.1.0 | 25 Oktober 2026 | Stabil terbaru |
 
-Versi 1.0.1 adalah rilis stabil saat ini yang berfokus pada stabilitas, penyimpanan catatan yang lebih aman, dan pengalaman installer yang lebih lengkap. Catatan rilis selengkapnya tersedia di halaman [Releases](https://github.com/risuunava/Notchi/releases).
+Versi 1.1.0 adalah rilis stabil saat ini. Rilis ini menambahkan pintasan global yang dapat disesuaikan untuk menyembunyikan atau menampilkan Notchi (default `Ctrl+Shift+N`), tombol hapus per item pada file drop shelf, dan opsi bahasa Inggris di Pengaturan, serta tampilan jam ringkas yang lebih bersih dengan gradasi halus pada waktu. Catatan rilis selengkapnya tersedia di halaman [Releases](https://github.com/risuunava/Notchi/releases).
 
 ## Kontribusi
 
