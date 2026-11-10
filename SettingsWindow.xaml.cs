@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -17,7 +18,17 @@ namespace WindowsNotch
         private bool _isReady;
         private bool _isClosing;
         private bool _initializing = true;
-        private bool _isRecordingHotkey;
+        private HotkeyTarget _recordingTarget = HotkeyTarget.None;
+        private bool _isUpdatingVolume;
+        private readonly AudioVolumeService _volume = new();
+        private readonly DispatcherTimer _volumeTimer;
+
+        private enum HotkeyTarget
+        {
+            None,
+            Main,
+            Focus
+        }
 
         public SettingsWindow(AppSettings settings)
         {
@@ -35,10 +46,35 @@ namespace WindowsNotch
 
             // Tampilkan hotkey saat ini
             HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
+            FocusHotkeyLabel.Text = FormatHotkey(
+                _settings.FocusHotkeyModifiers, _settings.FocusHotkeyKey);
+            EnableLyricsToggle.IsChecked = _settings.EnableLyrics;
+            HideNotchToggle.IsChecked = _settings.HideNotchInFocus;
+
+            // Notchi Mobile settings
+            MobileServerToggle.IsChecked = _settings.IsMobileServerEnabled;
+            MobilePortBox.Text = _settings.MobileServerPort.ToString();
+            MobileMaxFileSizeBox.Text = _settings.MobileMaxFileSizeMb.ToString();
+            RefreshDevicesList();
 
             AutoStartToggle.Click += OnAutoStartToggleChanged;
             IndonesianOption.Checked += OnLanguageChanged;
             EnglishOption.Checked += OnLanguageChanged;
+            MobileServerToggle.Click += OnMobileServerToggleChanged;
+            MobilePortBox.LostFocus += OnMobilePortLostFocus;
+            MobileMaxFileSizeBox.LostFocus += OnMobileMaxFileSizeLostFocus;
+            PairDeviceButton.Click += OnPairDeviceButtonClick;
+            GeneralTabRadio.Checked += (s, e) => SwitchTab(isMobile: false);
+            MobileTabRadio.Checked += (s, e) => SwitchTab(isMobile: true);
+
+            // Volume sistem
+            _volumeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _volumeTimer.Tick += OnVolumeTimerTick;
+            UpdateVolumeUi(_volume.Volume, _volume.IsMuted);
+            VolumeSlider.ValueChanged += OnVolumeSliderChanged;
+            MuteToggle.Click += OnMuteToggleClick;
+            _volumeTimer.Start();
+
             CloseButton.Click += (s, e) => CloseFromUser();
 
             var headerDrag = new WindowDragHelper(this, HeaderRow);
@@ -58,6 +94,9 @@ namespace WindowsNotch
             };
 
             HotkeyRecorder.MouseLeftButtonDown += OnHotkeyRecorderClick;
+            FocusHotkeyRecorder.MouseLeftButtonDown += OnFocusHotkeyRecorderClick;
+            EnableLyricsToggle.Click += OnEnableLyricsChanged;
+            HideNotchToggle.Click += OnHideNotchChanged;
 
             Activated += (s, e) => _isReady = true;
             Deactivated += OnDeactivated;
@@ -65,6 +104,9 @@ namespace WindowsNotch
             {
                 _isClosing = true;
                 _isReady = false;
+                _volumeTimer.Stop();
+                _volumeTimer.Tick -= OnVolumeTimerTick;
+                _volume.Dispose();
             };
 
             PreviewKeyDown += OnPreviewKeyDown;
@@ -75,18 +117,223 @@ namespace WindowsNotch
             _initializing = false;
         }
 
+        private void SwitchTab(bool isMobile)
+        {
+            if (GeneralTabContent == null || MobileTabContent == null) return;
+            GeneralTabContent.Visibility = isMobile ? Visibility.Collapsed : Visibility.Visible;
+            MobileTabContent.Visibility = isMobile ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // ===================== Volume sistem =====================
+
+        private void OnVolumeSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isUpdatingVolume) return;
+            int percent = (int)Math.Round(VolumeSlider.Value);
+            VolumeValueText.Text = $"{percent}%";
+            _volume.Volume = (float)(VolumeSlider.Value / 100.0);
+
+            // Menggeser slider otomatis mengaktifkan suara (unmute).
+            if (_volume.IsMuted)
+            {
+                _volume.IsMuted = false;
+                MuteToggle.IsChecked = true;
+                UpdateMuteTooltip();
+            }
+        }
+
+        private void OnMuteToggleClick(object sender, RoutedEventArgs e)
+        {
+            _volume.IsMuted = MuteToggle.IsChecked != true;
+            UpdateMuteTooltip();
+        }
+
+        private void OnVolumeTimerTick(object? sender, EventArgs e)
+        {
+            if (_isUpdatingVolume) return;
+            if (VolumeSlider.IsMouseCaptureWithin) return;
+            UpdateVolumeUi(_volume.Volume, _volume.IsMuted);
+        }
+
+        private void UpdateVolumeUi(float volume, bool muted)
+        {
+            if (_isUpdatingVolume) return;
+            _isUpdatingVolume = true;
+            try
+            {
+                VolumeSlider.Value = volume * 100.0;
+                VolumeValueText.Text = $"{(int)Math.Round(volume * 100.0)}%";
+                MuteToggle.IsChecked = !muted;
+                UpdateMuteTooltip();
+            }
+            finally
+            {
+                _isUpdatingVolume = false;
+            }
+        }
+
+        private void UpdateMuteTooltip()
+        {
+            MuteToggle.ToolTip = MuteToggle.IsChecked == true
+                ? Localization.Get("VolumeMute")
+                : Localization.Get("VolumeUnmute");
+        }
+
         public event EventHandler? SettingsChanged;
 
         public bool ClosedByUser { get; private set; }
 
+        private void RefreshDevicesList()
+        {
+            var devices = DeviceStore.Load();
+            DevicesItemsControl.ItemsSource = null;
+            DevicesItemsControl.ItemsSource = devices;
+            NoDevicesLabel.Visibility = devices.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnMobileServerToggleChanged(object? sender, RoutedEventArgs e)
+        {
+            if (_initializing) return;
+
+            bool enabled = MobileServerToggle.IsChecked == true;
+            _settings.IsMobileServerEnabled = enabled;
+            SaveSettings();
+        }
+
+        private void OnMobilePortLostFocus(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(MobilePortBox.Text, out int port) && port >= 1024 && port <= 65535)
+            {
+                if (_settings.MobileServerPort != port)
+                {
+                    _settings.MobileServerPort = port;
+                    SaveSettings();
+                }
+            }
+            else
+            {
+                MobilePortBox.Text = _settings.MobileServerPort.ToString();
+            }
+        }
+
+        private void OnMobileMaxFileSizeLostFocus(object sender, RoutedEventArgs e)
+        {
+            if (long.TryParse(MobileMaxFileSizeBox.Text, out long mb) && mb > 0)
+            {
+                if (_settings.MobileMaxFileSizeMb != mb)
+                {
+                    _settings.MobileMaxFileSizeMb = mb;
+                    SaveSettings();
+                }
+            }
+            else
+            {
+                MobileMaxFileSizeBox.Text = _settings.MobileMaxFileSizeMb.ToString();
+            }
+        }
+
+        private void OnPairDeviceButtonClick(object sender, RoutedEventArgs e)
+        {
+            if (!_settings.IsMobileServerEnabled)
+            {
+                SetStatus("Aktifkan server terlebih dahulu", isError: true);
+                return;
+            }
+
+            var qrWindow = new PairingQrWindow(_settings.MobileServerPort, _settings.PcId ?? Guid.NewGuid().ToString());
+            qrWindow.Show();
+        }
+
+        private void OnRevokeDeviceClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string deviceId)
+            {
+                DeviceStore.RevokeDevice(deviceId);
+                MobileServerService.Instance?.DisconnectDevice(deviceId);
+                RefreshDevicesList();
+                SetStatus("Perangkat dicabut", isError: false);
+            }
+        }
+
         private void OnHotkeyRecorderClick(object sender, MouseButtonEventArgs e)
         {
-            if (_isRecordingHotkey) return;
-
-            _isRecordingHotkey = true;
-            HotkeyLabel.Text = Localization.Get("HotkeyRecording");
-            HotkeyRecorder.BorderBrush = AccentBrush;
+            BeginRecording(HotkeyTarget.Main);
             e.Handled = true;
+        }
+
+        private void OnFocusHotkeyRecorderClick(object sender, MouseButtonEventArgs e)
+        {
+            BeginRecording(HotkeyTarget.Focus);
+            e.Handled = true;
+        }
+
+        private void BeginRecording(HotkeyTarget target)
+        {
+            if (_recordingTarget != HotkeyTarget.None) return;
+
+            _recordingTarget = target;
+            CancelRecordingVisuals();
+
+            if (target == HotkeyTarget.Main)
+            {
+                HotkeyLabel.Text = Localization.Get("HotkeyRecording");
+                HotkeyRecorder.BorderBrush = AccentBrush;
+            }
+            else
+            {
+                FocusHotkeyLabel.Text = Localization.Get("HotkeyRecording");
+                FocusHotkeyRecorder.BorderBrush = AccentBrush;
+            }
+        }
+
+        private void CancelRecording()
+        {
+            if (_recordingTarget == HotkeyTarget.None) return;
+
+            _recordingTarget = HotkeyTarget.None;
+            ResetRecorderVisuals();
+        }
+
+        private void CancelRecordingVisuals()
+        {
+            HotkeyLabel.Text = FormatHotkey(
+                _settings.HotkeyModifiers, _settings.HotkeyKey);
+            FocusHotkeyLabel.Text = FormatHotkey(
+                _settings.FocusHotkeyModifiers, _settings.FocusHotkeyKey);
+
+            HotkeyRecorder.BorderBrush = new SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x36));
+            FocusHotkeyRecorder.BorderBrush = new SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x36));
+        }
+
+        private void ResetRecorderVisuals()
+        {
+            HotkeyLabel.Text = FormatHotkey(
+                _settings.HotkeyModifiers, _settings.HotkeyKey);
+            FocusHotkeyLabel.Text = FormatHotkey(
+                _settings.FocusHotkeyModifiers, _settings.FocusHotkeyKey);
+
+            var idleBrush = new SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x36));
+            HotkeyRecorder.BorderBrush = idleBrush;
+            FocusHotkeyRecorder.BorderBrush = idleBrush;
+        }
+
+        private void OnEnableLyricsChanged(object sender, RoutedEventArgs e)
+        {
+            if (_initializing) return;
+
+            _settings.EnableLyrics = EnableLyricsToggle.IsChecked == true;
+            SaveSettings();
+        }
+
+        private void OnHideNotchChanged(object sender, RoutedEventArgs e)
+        {
+            if (_initializing) return;
+
+            _settings.HideNotchInFocus = HideNotchToggle.IsChecked == true;
+            SaveSettings();
         }
 
         private static bool IsInteractive(DependencyObject? obj)
@@ -164,12 +411,9 @@ namespace WindowsNotch
             if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
 
             // Batalkan recording saat window kehilangan fokus
-            if (_isRecordingHotkey)
+            if (_recordingTarget != HotkeyTarget.None)
             {
-                _isRecordingHotkey = false;
-                HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
-                HotkeyRecorder.BorderBrush = new SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3E));
+                CancelRecording();
             }
 
             Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
@@ -206,7 +450,7 @@ namespace WindowsNotch
 
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (_isRecordingHotkey)
+            if (_recordingTarget != HotkeyTarget.None)
             {
                 HandleHotkeyRecording(e);
                 return;
@@ -220,18 +464,13 @@ namespace WindowsNotch
 
         private void HandleHotkeyRecording(KeyEventArgs e)
         {
-            // Escape = batalkan
             if (e.Key == Key.Escape)
             {
-                _isRecordingHotkey = false;
-                HotkeyLabel.Text = FormatHotkey(_settings.HotkeyModifiers, _settings.HotkeyKey);
-                HotkeyRecorder.BorderBrush = new SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3E));
+                CancelRecording();
                 e.Handled = true;
                 return;
             }
 
-            // Abaikan jika hanya modifier saja yang ditekan
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
             if (key is Key.LeftCtrl or Key.RightCtrl or
                        Key.LeftShift or Key.RightShift or
@@ -241,14 +480,12 @@ namespace WindowsNotch
                 return;
             }
 
-            // Hitung modifier
             uint mods = 0;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) mods |= 2;
-            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))   mods |= 4;
-            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))     mods |= 1;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) mods |= 4;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) mods |= 1;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Windows)) mods |= 8;
 
-            // Butuh setidaknya satu modifier
             if (mods == 0)
             {
                 e.Handled = true;
@@ -256,14 +493,39 @@ namespace WindowsNotch
             }
 
             uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+            HotkeyTarget target = _recordingTarget;
 
-            _settings.HotkeyModifiers = mods;
-            _settings.HotkeyKey = vk;
+            if (target == HotkeyTarget.Main &&
+                mods == _settings.FocusHotkeyModifiers &&
+                vk == _settings.FocusHotkeyKey)
+            {
+                SetStatus(Localization.Get("HotkeyConflict"), isError: true);
+                e.Handled = true;
+                return;
+            }
 
-            _isRecordingHotkey = false;
-            HotkeyLabel.Text = FormatHotkey(mods, vk);
-            HotkeyRecorder.BorderBrush = new SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0x3A, 0x3A, 0x3E));
+            if (target == HotkeyTarget.Focus &&
+                mods == _settings.HotkeyModifiers &&
+                vk == _settings.HotkeyKey)
+            {
+                SetStatus(Localization.Get("HotkeyConflict"), isError: true);
+                e.Handled = true;
+                return;
+            }
+
+            if (target == HotkeyTarget.Main)
+            {
+                _settings.HotkeyModifiers = mods;
+                _settings.HotkeyKey = vk;
+            }
+            else if (target == HotkeyTarget.Focus)
+            {
+                _settings.FocusHotkeyModifiers = mods;
+                _settings.FocusHotkeyKey = vk;
+            }
+
+            _recordingTarget = HotkeyTarget.None;
+            ResetRecorderVisuals();
 
             SaveSettings();
             e.Handled = true;
@@ -288,7 +550,6 @@ namespace WindowsNotch
             if (vk != 0)
             {
                 var key = KeyInterop.KeyFromVirtualKey((int)vk);
-                // Sederhanakan nama key agar lebih mudah dibaca
                 string keyName = key switch
                 {
                     Key.Space => "Space",

@@ -19,11 +19,28 @@ namespace WindowsNotch
         /// </summary>
         public uint HotkeyKey { get; set; } = 0x4E; // N
 
+        public uint FocusHotkeyModifiers { get; set; } = 6; // Ctrl + Shift
+        public uint FocusHotkeyKey { get; set; } = 0x4D; // M
+
+        public bool EnableLyrics { get; set; } = true;
+        public bool HideNotchInFocus { get; set; } = true;
+
+        public double FocusWidth { get; set; } = 760;
+        public double FocusHeight { get; set; } = 380;
+        public double? FocusLeft { get; set; }
+        public double? FocusTop { get; set; }
+
         public double? NoteLeft { get; set; }
         public double? NoteTop { get; set; }
         public double? SettingsLeft { get; set; }
         public double? SettingsTop { get; set; }
         public double? DropShelfLeft { get; set; }
         public double? DropShelfTop { get; set; }
+
+        // Notchi Mobile Settings
+        public bool IsMobileServerEnabled { get; set; } = false;
+        public int MobileServerPort { get; set; } = 8765;
+        public long MobileMaxFileSizeMb { get; set; } = 500;
+        public string? PcId { get; set; }
     }
 }
